@@ -209,9 +209,7 @@ body{font-family:var(--font);background:var(--light);min-height:100vh;display:fl
       <div class="feat"><span style="font-size:16px">📊</span>Datos a Sheets</div>
     </div>
     <div class="sheets-box">
-      <p>📊 <strong>Google Sheets (opcional)</strong> — pega la URL de tu Apps Script para registrar valoraciones</p>
-      <label class="slabel">URL del Web App</label>
-      <input type="text" class="sinput" id="sheets-url" placeholder="https://script.google.com/macros/s/..."/>
+      <p>📊 <strong>Google Sheets activo</strong> — las valoraciones se registran automáticamente al cerrar el chat.</p>
     </div>
     <button id="gobtn" onclick="iniciar()">Iniciar UniBot →</button>
   </div>
@@ -266,6 +264,10 @@ body{font-family:var(--font);background:var(--light);min-height:100vh;display:fl
           <button class="rclose" onclick="cerrarSinValorar()">✕</button>
         </div>
         <p class="rsub">Tu opinión mejora UniBot para todos. Solo 1 minuto.</p>
+        <div id="r-temas-wrap" style="background:var(--light);border-radius:9px;padding:10px 12px;margin-bottom:11px;font-size:12px;color:var(--gray);display:none">
+          <span style="font-weight:500;color:var(--navy)">Temas consultados en esta sesión:</span>
+          <div id="r-temas-list" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:5px"></div>
+        </div>
         <label class="rlabel">Nombre completo *</label>
         <input type="text" class="rinput" id="r-nombre" placeholder="Ej: Laura García"/>
         <label class="rlabel">Correo electrónico *</label>
@@ -340,8 +342,9 @@ body{font-family:var(--font);background:var(--light);min-height:100vh;display:fl
 const LOGO = ''; // vacío — se usa emoji de fallback si no hay logo
 
 // ── ESTADO ────────────────────────────────────────────────────
-let SHEETS_URL = '';
+let SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwZHoxS9y4nRXFAPsdOpLher117ikIWts5tny83T6IUQXmuwSP72NL2AXih-mSixeKDCg/exec';
 let isOpen = false, starRating = 0, totalMensajes = 0;
+let temasConsultados = [];
 let sessionStart = new Date(), tramiteDetectado = '', requiereEscalamiento = false;
 let ticketNum = '';
 
@@ -475,7 +478,7 @@ function genTicket() {
 
 // ── INICIO ────────────────────────────────────────────────────
 function iniciar() {
-  SHEETS_URL = document.getElementById('sheets-url').value.trim();
+  // SHEETS_URL ya está configurada por defecto
   sessionStart = new Date();
   document.getElementById('demo-panel').style.display = 'none';
   document.getElementById('launcher').style.display = 'flex';
@@ -494,6 +497,15 @@ function toggleChat() {
 
 function cerrarChat() {
   if (totalMensajes > 0) {
+    // Mostrar temas consultados en el formulario
+    const wrap = document.getElementById('r-temas-wrap');
+    const list = document.getElementById('r-temas-list');
+    if (temasConsultados.length > 0) {
+      list.innerHTML = temasConsultados.map(t =>
+        `<span style="background:rgba(46,196,182,.12);color:#006B58;border-radius:12px;padding:2px 9px;font-size:11px;font-weight:500">${t}</span>`
+      ).join('');
+      wrap.style.display = 'block';
+    }
     document.getElementById('rating-overlay').classList.add('show');
   } else toggleChat();
 }
@@ -533,6 +545,12 @@ function enviar(text) {
 function responder(msg) {
   const { resp, tipo, urgente, escala } = buscarRespuesta(msg);
   tramiteDetectado = tipo;
+
+  // Acumular temas únicos consultados en la sesión
+  const labelT = labelTipo(tipo);
+  if (tipo !== 'consulta_general' && !temasConsultados.includes(labelT)) {
+    temasConsultados.push(labelT);
+  }
 
   if (tipo !== 'consulta_general') addTramiteTag(labelTipo(tipo));
 
@@ -583,6 +601,7 @@ async function enviarValoracion() {
     programa: document.getElementById('r-prog').value.trim() || 'No especificó',
     semestre: document.getElementById('r-sem').value.trim() || 'No especificó',
     tramite: document.getElementById('r-tramite').value || 'No especificó',
+    temas_consultados: temasConsultados.length > 0 ? temasConsultados.join(' | ') : 'No clasificado',
     escalamiento: document.getElementById('r-esc').value,
     calificacion: starRating || 'Sin calificar',
     comentario: document.getElementById('r-com').value.trim() || 'Sin comentarios',
@@ -713,7 +732,7 @@ function removeTyping(id) { const e=document.getElementById(id); if(e)e.remove()
 function clearChat() {
   if(!confirm('¿Iniciar nueva conversación?')) return;
   totalMensajes=0; tramiteDetectado=''; requiereEscalamiento=false;
-  ticketNum=''; sessionStart=new Date();
+  ticketNum=''; sessionStart=new Date(); temasConsultados=[];
   document.getElementById('messages').innerHTML='';
   setTimeout(bienvenida, 200);
 }
