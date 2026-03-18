@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UniBot · Universo Digital</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2E5E;--blue:#1B2E5E;--accent:#2EC4B6;--accent2:#F4A535;
+  --light:#F0F4FA;--white:#fff;--gray:#6B7A90;--border:#DDE3EE;--danger:#E85454;
+  --radius:16px;--shadow:0 8px 32px rgba(11,31,58,.12);--shadow-lg:0 20px 60px rgba(11,31,58,.18);
+  --font:'Sora',sans-serif;--mono:'DM Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--light);min-height:100vh;display:flex;
+  align-items:center;justify-content:center;padding:20px;
+  background-image:radial-gradient(circle at 20% 20%,rgba(46,196,182,.08) 0%,transparent 50%),
+  radial-gradient(circle at 80% 80%,rgba(27,46,94,.08) 0%,transparent 50%)}
+
+/* LAUNCHER */
+#launcher{position:fixed;bottom:28px;right:28px;width:60px;height:60px;
+  background:linear-gradient(135deg,var(--navy),var(--accent));border-radius:50%;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  box-shadow:var(--shadow-lg);z-index:1000;transition:transform .2s;border:none}
+#launcher:hover{transform:scale(1.08)}
+#launcher svg{width:28px;height:28px;fill:white}
+#notif-dot{position:absolute;top:4px;right:4px;width:14px;height:14px;
+  background:var(--accent2);border-radius:50%;border:2px solid white;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
+
+/* CHAT */
+#chat-window{position:fixed;bottom:100px;right:28px;width:420px;height:650px;
+  background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-lg);
+  display:flex;flex-direction:column;overflow:hidden;z-index:999;
+  transform:scale(.85) translateY(30px);opacity:0;pointer-events:none;
+  transition:all .3s cubic-bezier(.34,1.56,.64,1)}
+#chat-window.open{transform:scale(1) translateY(0);opacity:1;pointer-events:all}
+
+/* HEADER */
+.chat-header{background:linear-gradient(135deg,var(--navy),var(--blue));
+  padding:16px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.av-wrap{position:relative;flex-shrink:0}
+.bot-av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#00A588);
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  border:2px solid rgba(255,255,255,.2);overflow:hidden}
+.bot-av img{width:40px;height:40px;object-fit:contain}
+.online{position:absolute;bottom:1px;right:1px;width:11px;height:11px;
+  background:#22C55E;border-radius:50%;border:2px solid var(--navy)}
+.hinfo{flex:1}
+.hname{font-size:15px;font-weight:600;color:white}
+.hsub{font-size:12px;color:rgba(255,255,255,.6);margin-top:1px}
+.hbtns{display:flex;gap:8px}
+.hbtn{background:rgba(255,255,255,.1);border:none;border-radius:8px;width:32px;height:32px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;color:white;transition:background .15s}
+.hbtn:hover{background:rgba(255,255,255,.2)}
+.hbtn svg{width:16px;height:16px;fill:currentColor}
+
+/* MESSAGES */
+#messages{flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+#messages::-webkit-scrollbar{width:4px}
+#messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.mrow{display:flex;gap:8px;align-items:flex-end;animation:min .25s ease}
+@keyframes min{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.mrow.user{flex-direction:row-reverse}
+.mav{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;
+  align-items:center;justify-content:center;font-size:13px;font-weight:600;overflow:hidden}
+.mav.bot{background:linear-gradient(135deg,var(--accent),#00A588)}
+.mav.bot img{width:26px;height:26px;object-fit:contain}
+.mav.user{background:var(--navy);color:white;font-size:14px}
+.bubble{max-width:78%;padding:11px 14px;border-radius:16px;font-size:13.5px;line-height:1.55}
+.bubble.bot{background:var(--light);color:var(--navy);border-bottom-left-radius:4px}
+.bubble.user{background:linear-gradient(135deg,var(--blue),var(--navy));color:white;border-bottom-right-radius:4px}
+.bubble.alert{background:#FEF2F2;color:#991B1B;border:1px solid #FECACA;border-bottom-left-radius:4px}
+.bubble ul{padding-left:16px;margin-top:4px}
+.bubble li{margin-bottom:3px}
+.bubble strong{font-weight:600}
+.mtime{font-size:10px;color:var(--gray);margin-top:3px;padding:0 4px}
+.mrow.user .mtime{text-align:right}
+
+/* QUICK REPLIES */
+.qr{display:flex;flex-wrap:wrap;gap:7px;padding:4px 0 0 38px;animation:min .3s ease}
+.qrbtn{background:white;border:1.5px solid var(--accent);color:var(--blue);
+  border-radius:20px;padding:6px 13px;font-size:12.5px;font-family:var(--font);
+  cursor:pointer;transition:all .15s;font-weight:500}
+.qrbtn:hover{background:var(--accent);color:white}
+
+/* TAGS */
+.tramite-tag{display:inline-flex;align-items:center;gap:4px;margin-left:38px;margin-top:2px;
+  background:rgba(46,196,182,.1);color:#006B58;border-radius:16px;padding:3px 10px;
+  font-size:11px;font-weight:500;animation:min .3s ease}
+.alert-badge{background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;
+  padding:9px 12px;font-size:12px;color:#991B1B;display:flex;gap:7px;align-items:flex-start;
+  animation:min .3s ease}
+.escalation-badge{background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;
+  padding:9px 12px;font-size:12px;color:#9A3412;display:flex;gap:7px;align-items:flex-start;
+  animation:min .3s ease}
+
+/* TICKET */
+.ticket{background:white;border:1px solid var(--border);border-radius:12px;
+  padding:11px 13px;font-size:12px;animation:min .3s ease}
+.tnum{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:500}
+.trow{display:flex;justify-content:space-between;margin-top:4px;color:var(--gray)}
+.tstatus{background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:500}
+.tstatus.esc{background:#FEF3C7;color:#92400E}
+
+/* INPUT */
+.chat-footer{padding:12px 16px 16px;border-top:1px solid var(--border);flex-shrink:0;background:white}
+.irow{display:flex;gap:8px;align-items:flex-end}
+#user-input{flex:1;border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;
+  font-family:var(--font);font-size:14px;color:var(--navy);resize:none;outline:none;
+  max-height:100px;line-height:1.5;transition:border-color .15s;background:var(--light)}
+#user-input:focus{border-color:var(--accent);background:white}
+#user-input::placeholder{color:var(--gray)}
+#send-btn{width:42px;height:42px;background:linear-gradient(135deg,var(--accent),#00A588);
+  border:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .15s;flex-shrink:0}
+#send-btn:hover{transform:scale(1.05)}
+#send-btn svg{width:18px;height:18px;fill:white}
+.fhint{font-size:11px;color:var(--gray);text-align:center;margin-top:7px}
+
+/* VALORACIÓN */
+#rating-overlay{position:absolute;inset:0;background:rgba(11,31,58,.6);
+  display:none;align-items:flex-end;z-index:10;backdrop-filter:blur(3px)}
+#rating-overlay.show{display:flex}
+#rating-panel{background:white;width:100%;border-radius:20px 20px 0 0;
+  padding:22px 18px 26px;animation:sup .35s cubic-bezier(.34,1.56,.64,1);
+  max-height:92%;overflow-y:auto}
+@keyframes sup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.rh{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.rtitle{font-size:15px;font-weight:600;color:var(--navy)}
+.rclose{background:var(--light);border:none;border-radius:50%;width:27px;height:27px;
+  cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;color:var(--gray)}
+.rsub{font-size:12.5px;color:var(--gray);margin-bottom:16px}
+.rlabel{font-size:11.5px;font-weight:500;color:var(--navy);margin-bottom:4px;display:block}
+.rinput{width:100%;border:1.5px solid var(--border);border-radius:9px;
+  padding:9px 12px;font-family:var(--font);font-size:13px;color:var(--navy);
+  outline:none;background:var(--light);transition:border-color .15s;margin-bottom:11px}
+.rinput:focus{border-color:var(--accent);background:white}
+.rinput::placeholder{color:var(--gray)}
+.rrow{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:11px}
+.rselect{width:100%;border:1.5px solid var(--border);border-radius:9px;
+  padding:9px 12px;font-family:var(--font);font-size:13px;color:var(--navy);
+  outline:none;background:var(--light);margin-bottom:11px;cursor:pointer}
+.rselect:focus{border-color:var(--accent)}
+.stars{display:flex;gap:5px;margin-bottom:13px}
+.star{font-size:25px;cursor:pointer;transition:transform .15s;filter:grayscale(1);opacity:.4}
+.star.on{filter:grayscale(0);opacity:1;transform:scale(1.1)}
+.rtextarea{width:100%;border:1.5px solid var(--border);border-radius:9px;
+  padding:9px 12px;font-family:var(--font);font-size:13px;color:var(--navy);
+  outline:none;background:var(--light);resize:none;min-height:68px;
+  transition:border-color .15s;margin-bottom:13px}
+.rtextarea:focus{border-color:var(--accent)}
+#rbtn{width:100%;background:linear-gradient(135deg,var(--blue),var(--accent));
+  color:white;border:none;border-radius:11px;padding:12px;font-family:var(--font);
+  font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s}
+#rbtn:hover{opacity:.9}
+#rbtn:disabled{opacity:.5;cursor:not-allowed}
+#rsuccess{display:none;text-align:center;padding:18px 0}
+#rsuccess .sicon{font-size:42px;margin-bottom:10px}
+#rsuccess h3{font-size:17px;font-weight:600;color:var(--navy);margin-bottom:5px}
+#rsuccess p{font-size:13px;color:var(--gray)}
+
+/* DEMO PANEL */
+#demo-panel{max-width:460px;width:100%;text-align:center}
+.dlogo{display:inline-flex;align-items:center;gap:10px;margin-bottom:28px}
+.dcard{background:white;border-radius:20px;padding:32px;box-shadow:var(--shadow);text-align:left}
+.dcard h2{font-size:20px;font-weight:600;color:var(--navy);margin-bottom:8px}
+.dcard p{font-size:14px;color:var(--gray);line-height:1.6;margin-bottom:20px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.feat{background:var(--light);border-radius:10px;padding:12px;font-size:12.5px;
+  color:var(--navy);display:flex;gap:8px;align-items:flex-start}
+.slabel{font-size:12px;font-weight:500;color:var(--navy);margin-bottom:5px;display:block}
+.sinput{width:100%;border:1.5px solid var(--border);border-radius:10px;
+  padding:11px 14px;font-family:var(--mono);font-size:12px;color:var(--navy);
+  outline:none;background:var(--light);margin-bottom:6px;transition:border-color .15s}
+.sinput:focus{border-color:var(--accent);background:white}
+.sheets-box{background:var(--light);border-radius:11px;padding:13px;margin:12px 0}
+.sheets-box p{font-size:12px;color:var(--gray);margin-bottom:7px}
+#gobtn{width:100%;background:linear-gradient(135deg,var(--blue),var(--accent));
+  color:white;border:none;border-radius:12px;padding:13px;font-family:var(--font);
+  font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s,transform .15s}
+#gobtn:hover{opacity:.92;transform:translateY(-1px)}
+.badge-free{display:inline-block;background:rgba(46,196,182,.15);color:#006B58;
+  border:1px solid rgba(46,196,182,.3);border-radius:12px;padding:3px 10px;
+  font-size:11px;font-weight:500;margin-bottom:14px}
+
+@media(max-width:480px){
+  #chat-window{width:calc(100vw - 16px);right:8px;bottom:88px;height:80vh}
+  #launcher{bottom:16px;right:16px}
+}
+</style>
+</head>
+<body>
+
+<!-- DEMO PANEL -->
+<div id="demo-panel">
+  <div class="dlogo" id="logo-wrap"></div>
+  <div class="dcard">
+    <div class="badge-free">✓ 100% gratuito · Sin IA · Funciona offline</div>
+    <h2>UniBot — Asesor Virtual</h2>
+    <p>Responde preguntas sobre Universo Digital usando una base de conocimiento integrada. No necesita internet ni API key para funcionar.</p>
+    <div class="fgrid">
+      <div class="feat"><span style="font-size:16px">📅</span>Calendario 2026</div>
+      <div class="feat"><span style="font-size:16px">📜</span>Certificados</div>
+      <div class="feat"><span style="font-size:16px">💰</span>Financiación</div>
+      <div class="feat"><span style="font-size:16px">🎓</span>Requisitos grado</div>
+      <div class="feat"><span style="font-size:16px">🚨</span>Alerta deserción</div>
+      <div class="feat"><span style="font-size:16px">📊</span>Datos a Sheets</div>
+    </div>
+    <div class="sheets-box">
+      <p>📊 <strong>Google Sheets (opcional)</strong> — pega la URL de tu Apps Script para registrar valoraciones</p>
+      <label class="slabel">URL del Web App</label>
+      <input type="text" class="sinput" id="sheets-url" placeholder="https://script.google.com/macros/s/..."/>
+    </div>
+    <button id="gobtn" onclick="iniciar()">Iniciar UniBot →</button>
+  </div>
+</div>
+
+<!-- LAUNCHER -->
+<button id="launcher" onclick="toggleChat()" style="display:none">
+  <div id="notif-dot"></div>
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+</button>
+
+<!-- CHAT WINDOW -->
+<div id="chat-window">
+  <div class="chat-header">
+    <div class="av-wrap">
+      <div class="bot-av" id="hav"></div>
+      <div class="online"></div>
+    </div>
+    <div class="hinfo">
+      <div class="hname">UniBot · Asesor Virtual</div>
+      <div class="hsub">Universo Digital · Educación Superior</div>
+    </div>
+    <div class="hbtns">
+      <button class="hbtn" onclick="clearChat()" title="Nueva conversación">
+        <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      </button>
+      <button class="hbtn" onclick="cerrarChat()" title="Cerrar">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="messages"></div>
+
+  <div class="chat-footer">
+    <div class="irow">
+      <textarea id="user-input" placeholder="Escribe tu pregunta..." rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button id="send-btn" onclick="enviar()">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+    <div class="fhint">UniBot · Universo Digital · Confidencial · 24/7</div>
+  </div>
+
+  <!-- VALORACIÓN -->
+  <div id="rating-overlay">
+    <div id="rating-panel">
+      <div id="rform">
+        <div class="rh">
+          <div class="rtitle">✨ Antes de irte…</div>
+          <button class="rclose" onclick="cerrarSinValorar()">✕</button>
+        </div>
+        <p class="rsub">Tu opinión mejora UniBot para todos. Solo 1 minuto.</p>
+        <label class="rlabel">Nombre completo *</label>
+        <input type="text" class="rinput" id="r-nombre" placeholder="Ej: Laura García"/>
+        <label class="rlabel">Correo electrónico *</label>
+        <input type="email" class="rinput" id="r-correo" placeholder="tu@correo.com"/>
+        <div class="rrow">
+          <div><label class="rlabel">Programa</label><input type="text" class="rinput" id="r-prog" placeholder="Ej: Ing. Sistemas" style="margin-bottom:0"/></div>
+          <div><label class="rlabel">Semestre</label><input type="text" class="rinput" id="r-sem" placeholder="Ej: 5°" style="margin-bottom:0"/></div>
+        </div>
+        <label class="rlabel" style="margin-top:11px">Tipo de trámite consultado</label>
+        <select class="rselect" id="r-tramite">
+          <option value="">— Selecciona —</option>
+          <optgroup label="Admisiones">
+            <option>Proceso de inscripción pregrado</option>
+            <option>Proceso de inscripción posgrado</option>
+            <option>Documentos de legalización</option>
+          </optgroup>
+          <optgroup label="Certificados">
+            <option>Certificado de admisión</option>
+            <option>Certificado de matrícula</option>
+            <option>Certificado de horarios</option>
+            <option>Certificado de terminación de materias</option>
+            <option>Certificado de notas</option>
+            <option>Certificado de egresado</option>
+          </optgroup>
+          <optgroup label="Financiación">
+            <option>Financiación directa</option>
+            <option>ICETEX u otras entidades</option>
+            <option>Becas y descuentos</option>
+          </optgroup>
+          <optgroup label="Académico">
+            <option>Calendario y fechas</option>
+            <option>Requisitos de grado</option>
+            <option>Cancelación de matrícula</option>
+          </optgroup>
+          <optgroup label="Apoyo">
+            <option>Permanencia y retención</option>
+            <option>Situación de emergencia</option>
+          </optgroup>
+          <option>Otro</option>
+        </select>
+        <label class="rlabel">¿Requirió escalamiento a un asesor?</label>
+        <select class="rselect" id="r-esc">
+          <option value="No">No — UniBot resolvió mi consulta</option>
+          <option value="Sí - solicitado por mí">Sí — lo solicité yo</option>
+          <option value="Sí - sugerido por UniBot">Sí — UniBot me lo sugirió</option>
+          <option value="Sí - alerta de deserción">Sí — se activó alerta</option>
+        </select>
+        <label class="rlabel">¿Cómo calificarías tu experiencia?</label>
+        <div class="stars">
+          <span class="star" onclick="setStar(1)">⭐</span>
+          <span class="star" onclick="setStar(2)">⭐</span>
+          <span class="star" onclick="setStar(3)">⭐</span>
+          <span class="star" onclick="setStar(4)">⭐</span>
+          <span class="star" onclick="setStar(5)">⭐</span>
+        </div>
+        <label class="rlabel">Observaciones o sugerencias</label>
+        <textarea class="rtextarea" id="r-com" placeholder="¿Qué funcionó bien? ¿Qué mejorarías?"></textarea>
+        <button id="rbtn" onclick="enviarValoracion()">Enviar valoración →</button>
+      </div>
+      <div id="rsuccess">
+        <div class="sicon">🎉</div>
+        <h3>¡Gracias por tu valoración!</h3>
+        <p>Tu opinión queda registrada y mejora UniBot para todos los estudiantes de Universo Digital.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── LOGO B64 (se inyecta en runtime desde variable) ───────────
+// Se llena dinámicamente con el logo embebido
+const LOGO = ''; // vacío — se usa emoji de fallback si no hay logo
+
+// ── ESTADO ────────────────────────────────────────────────────
+let SHEETS_URL = '';
+let isOpen = false, starRating = 0, totalMensajes = 0;
+let sessionStart = new Date(), tramiteDetectado = '', requiereEscalamiento = false;
+let ticketNum = '';
+
+// ── BASE DE CONOCIMIENTO ──────────────────────────────────────
+const KB = {
+  bienvenida: `¡Hola! Soy **UniBot**, el asesor virtual de **Universo Digital** 🎓\n\nEstoy aquí para ayudarte de forma ágil y confidencial. ¿Con qué te puedo ayudar hoy?`,
+
+  calendario_1: `**Período I — 2026 (febrero a junio)**\n\n- Atención al público desde: **13 de enero**\n- Matrícula ordinaria hasta: **30 de enero**\n- Matrícula extraordinaria hasta: **6 de febrero**\n- Inducción estudiantes nuevos: **24 al 31 de enero**\n- Inicio de clases: **2 de febrero**\n- Cancelación con devolución del 90%: hasta **23 de febrero**\n- Exámenes finales: **1 al 6 de junio**\n- Ceremonia de grados: **8 de mayo**\n- Período intersemestral: **16 de junio al 15 de julio**`,
+
+  calendario_2: `**Período II — 2026 (julio a noviembre)**\n\n- Inscripciones nuevos: **16 de marzo al 17 de julio**\n- Inducción nuevos: **11 al 17 de julio**\n- Matrícula ordinaria hasta: **17 de julio**\n- Matrícula extraordinaria hasta: **24 de julio**\n- Inicio de clases: **21 de julio**\n- Semana de receso: **5 al 10 de octubre**\n- Exámenes finales: **17 al 23 de noviembre**\n- Ceremonia de grados: **11 de diciembre**`,
+
+  inscripcion_pre: `**Proceso de inscripción pregrado — 2026-1**\n\nInscripciones abiertas: **4 sep 2025 – 30 ene 2026**\nCosto: **$52.500 COP**\n\nPasos:\n- Diligenciar formulario en línea\n- Recibirás un correo con la guía adjunta\n- El programa te contacta para agendar entrevista\n- Tras la entrevista recibes la admisión\n- Descargas guía de matrícula (imprimir en láser)\n- Pagas la matrícula\n- Envías documentos a **inscripciones@universodgital.edu.co**`,
+
+  docs_pre: `**Documentos de legalización — pregrado**\n\nEnviar en PDF a inscripciones@universodgital.edu.co:\n\n- Fotocopia documento de identidad (ambas caras)\n- Fotocopia acta de grado o diploma de bachiller\n- Certificado EPS, Sisbén o consulta Fosyga/BDUA\n- Fotografía JPG fondo blanco\n- Formato de verificación de documentos (firmado)\n- **Solo menores de edad:** Formato Habeas Data firmado por acudiente`,
+
+  docs_pos: `**Documentos de legalización — posgrado**\n\nEspecialización y maestría:\n- Documento de identidad (ambas caras)\n- Acta de grado de pregrado\n- Certificado EPS o Sisbén\n- Fotografía JPG fondo blanco\n- Formato de verificación de documentos\n\nDoctorado además requiere:\n- Acta de grado de maestría\n- Certificado de inglés\n- Carta de disponibilidad`,
+
+  programas: `**Oferta de programas de pregrado**\n\n- **Agropecuarias:** Medicina Veterinaria, Zootecnia, Ing. Agronómica, Ing. Alimentos\n- **Ingeniería:** Civil, Eléctrica, Ambiental, Sistemas, Industrial\n- **Economía y Empresa:** Admón Empresas, Contaduría, Economía\n- **Negocios:** Negocios Internacionales, Admón Agronegocios\n- **Humanidades:** Trabajo Social, Filosofía, Ciencias Políticas\n- **Salud:** Optometría, Bacteriología\n- **Arquitectura:** Arquitectura, Diseño de Espacios\n- **Educación:** Lic. Lengua Castellana, Lic. Ed. Religiosa, Lic. Filosofía`,
+
+  posgrados: `**Oferta de posgrados**\n\nEspecializaciones:\n- Gerencia de Empresas\n- Gerencia de Proyectos\n- Pedagogía\n\nMaestría:\n- Administración\n- Docencia\n- Filosofía\n\nDoctorado:\n- Educación y Sociedad\n- Agrociencias\n\nCosto de inscripción: **$52.500 COP** en todos los niveles`,
+
+  cert_matricula: `**Certificado de matrícula**\n\n- Descárgalo directamente desde el portal **SIAF**\n- Ruta: SIAF → Mis documentos → Certificado de matrícula\n- Disponible desde el inicio oficial de clases\n\n¿Necesitas la versión con sello y firma oficial? Escribe a:\n📧 **registro@universodgital.edu.co**\n⏱ Tiempo de entrega: 2-3 días hábiles`,
+
+  cert_admision: `**Certificado de admisión**\n\nSolicítalo a:\n📧 **inscripciones@universodgital.edu.co**\n\nAsunto del correo: "Solicitud certificado de admisión – [Nombre] – [Código]"\n⏱ Tiempo de respuesta: 2-3 días hábiles\n💵 Sin costo para estudiantes activos`,
+
+  cert_horarios: `**Certificado de horarios**\n\n- Descárgalo desde SIAF → Horario semestral\n\n¿Necesitas constancia oficial firmada?\nSolicítala directamente a tu **programa académico**`,
+
+  cert_notas: `**Certificado de notas / Historial académico**\n\n- Descárgalo desde SIAF → Historial académico\n\n¿Necesitas la versión oficial con firma?\n📧 **registro@universodgital.edu.co**\n⏱ Tiempo: 3-5 días hábiles\n💵 Sin costo para estudiantes activos`,
+
+  cert_terminacion: `**Certificado de terminación de materias**\n\n- Solicitarlo directamente a tu **programa académico**\n- Requiere haber aprobado todos los créditos del plan de estudios\n- ⏱ Tiempo: 5 días hábiles\n- Es necesario para iniciar el proceso de grado`,
+
+  cert_egresado: `**Certificado de egresado**\n\nSolicítalo a:\n📧 **egresados@universodgital.edu.co**\n\n- Adjunta copia del diploma o acta de grado\n- ⏱ Tiempo: 3 días hábiles`,
+
+  grado_pre: `**Requisitos de grado — pregrado**\n\n- 100% de créditos del plan de estudios aprobados\n- Paz y salvo: financiero, biblioteca y bienestar\n- Trabajo de grado aprobado (investigación, pasantía, emprendimiento o diplomado)\n- Suficiencia en segunda lengua (nivel B1 mínimo)\n\n⚠️ **Jóvenes a la E:** deben cumplir adicionalmente horas de pasantía social\n\n**Ceremonias 2026:**\n- Semestre 1: **8 de mayo**\n- Semestre 2: **11 de diciembre**`,
+
+  grado_pos: `**Requisitos de grado — posgrado**\n\nEspecialización y maestría:\n- Aprobar todos los módulos del programa\n- Sustentar trabajo de grado o tesis ante jurado\n- Paz y salvo institucional\n\nDoctorado:\n- Aprobar seminarios y créditos de investigación\n- Tesis doctoral con sustentación pública\n- Artículo publicado en revista Scopus o ISI\n- Paz y salvo institucional`,
+
+  financiacion: `**Opciones de financiación**\n\n**Financiación directa Universo Digital:**\n- Línea 50/50: financia el 50%, tasa 0%, resto en 2 cuotas\n- Línea 30/70: financia el 70%, tasa 1% M.V., resto en 4 cuotas\n- Ambas requieren codeudor\n- Contacto: **apoyofinanciero@universodgital.edu.co**\n\n**Entidades aliadas:**\n- ICETEX (pregrado y posgrado)\n- Fincomercio\n- Financiar\n- Sufi (pregrado, posgrado y diplomados)`,
+
+  becas: `**Becas y descuentos**\n\n- **Beca por mérito académico:** para los mejores promedios del semestre, descuento entre el **25% y 75%** de la matrícula. Aplica por programa y vigencia. No está asociada al puntaje Saber 11.\n- **Incentivos:** descuentos por mérito, fidelización o participación\n- **Auxilios:** apoyos para estudiantes en situación de vulnerabilidad\n- **Convenios:** con entidades externas\n- **Generación E / Jóvenes a la E:** cubre el **100%** de la matrícula`,
+
+  cancelacion: `**Cancelación de matrícula**\n\n**Con devolución del 90%:**\n- Semestre I-2026: hasta el **23 de febrero**\n- Semestre II-2026: hasta el **11 de agosto**\n\n**Sin devolución:** después de esas fechas\n\nPara solicitar la cancelación comunícate con tu programa académico o escribe a inscripciones@universodgital.edu.co`,
+
+  paz_salvo: `**Paz y salvo institucional**\n\nEl paz y salvo certifica que no tienes deudas pendientes con:\n- **Financiero:** pagos de matrícula y otros conceptos\n- **Biblioteca:** libros, multas o equipos\n- **Bienestar:** implementos u otros servicios\n\nSolicítalo en cada dependencia antes de iniciar el proceso de grado. Si tienes alguna deuda, debes cancelarla primero.`,
+
+  contactos: `**Contactos Universo Digital**\n\n📧 Inscripciones: inscripciones@universodgital.edu.co\n📧 Apoyo financiero: apoyofinanciero@universodgital.edu.co\n📧 Registro académico: registro@universodgital.edu.co\n📧 Egresados: egresados@universodgital.edu.co\n📱 WhatsApp: (+57) 321 770 17 68\n\n¿En qué más te puedo ayudar?`,
+
+  no_entiendo: `No encontré información específica sobre eso en mi base de conocimiento.\n\nPuedo ayudarte con:\n- 📅 Calendario académico 2026\n- 📋 Inscripción y documentos\n- 📜 Solicitud de certificados\n- 💰 Financiación y becas\n- 🎓 Requisitos de grado\n- 📞 Contactos institucionales\n\n¿O prefieres hablar con un asesor? Escríbenos al WhatsApp: **(+57) 321 770 17 68**`,
+
+  desercion: `Gracias por contarme esto — lo que sientes es completamente válido y me alegra que lo hayas compartido.\n\nAntes de tomar una decisión, hay opciones de apoyo económico y académico que quizás no conoces todavía.\n\nYa notifiqué a un **asesor de permanencia** quien puede orientarte hoy mismo. ¿Prefieres que te contacte por WhatsApp o por llamada?\n\n📱 También puedes escribirnos directamente: **(+57) 321 770 17 68**`,
+
+  asesor: `Entendido, te conecto con un asesor humano.\n\nUn funcionario especializado atenderá tu caso en horario hábil (lunes a viernes, 8am–5pm).\n\nMientras tanto puedes escribirnos directamente:\n📱 WhatsApp: **(+57) 321 770 17 68**\n📧 inscripciones@universodgital.edu.co\n\nTe voy a generar un número de caso para el seguimiento.`
+};
+
+// ── REGLAS DE CLASIFICACIÓN ───────────────────────────────────
+const RULES = [
+  { keys:['retir','cancel','no puedo más','irme','ya no quiero','dejar','deserc','mal emocion','estoy muy mal','no aguanto','deprim','no vale','llorand'], resp:'desercion', tipo:'apoyo', urgente:true },
+  { keys:['asesor','hablar con','funcionario','persona','humano','ayuda personal'], resp:'asesor', tipo:'apoyo', escala:true },
+  { keys:['cert','constancia'], sub:[
+    { keys:['matrícul','matricul'], resp:'cert_matricula' },
+    { keys:['admisión','admision','admitid'], resp:'cert_admision' },
+    { keys:['horario'], resp:'cert_horarios' },
+    { keys:['nota','calificac','historial','record'], resp:'cert_notas' },
+    { keys:['terminac','cursad','culmin'], resp:'cert_terminacion' },
+    { keys:['egresad','gradua'], resp:'cert_egresado' },
+  ], tipo:'certificados' },
+  { keys:['inscripci','admisión','admision','aspirante','nuevo ingreso','cómo ingres','postular'], resp:'inscripcion_pre', tipo:'inscripcion' },
+  { keys:['document','legaliz','papeles','qué necesito','requisitos para inscrib'], sub:[
+    { keys:['posgrado','especiali','maestría','maestria','doctorado'], resp:'docs_pos' },
+  ], resp:'docs_pre', tipo:'inscripcion' },
+  { keys:['program','carrera','facultad','qué estudiar','oferta'], sub:[
+    { keys:['posgrado','especiali','maestría','maestria','doctorado'], resp:'posgrados' },
+  ], resp:'programas', tipo:'inscripcion' },
+  { keys:['posgrado','especiali','maestría','maestria','doctorado'], resp:'posgrados', tipo:'inscripcion' },
+  { keys:['calendar','fecha','cuándo','cuando','inicio','empieza','termina','vacac','receso','festivo','semestre'], sub:[
+    { keys:['segundo','2','julio','agosto','ii'], resp:'calendario_2' },
+  ], resp:'calendario_1', tipo:'calendario' },
+  { keys:['financ','pagar','cuota','crédito','credito','préstamo','prestamo','plata','dinero'], resp:'financiacion', tipo:'financiacion' },
+  { keys:['beca','descuento','beneficio','apoyo económ','icetex','sufi','fincom'], resp:'becas', tipo:'financiacion' },
+  { keys:['grado','graduar','tesis','trabajo de grado','ceremonia'], sub:[
+    { keys:['posgrado','maestría','maestria','doctorado','especiali'], resp:'grado_pos' },
+  ], resp:'grado_pre', tipo:'grado' },
+  { keys:['paz y salvo','paz salvo','deuda','debo'], resp:'paz_salvo', tipo:'grado' },
+  { keys:['cancel','retiro de matrícula','retiro de materias'], resp:'cancelacion', tipo:'calendario' },
+  { keys:['contacto','teléfono','telefono','correo','email','whatsapp','escribir','llamar'], resp:'contactos', tipo:'apoyo' },
+];
+
+function buscarRespuesta(msg) {
+  const m = msg.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  for (const rule of RULES) {
+    if (rule.keys.some(k => m.includes(k.normalize('NFD').replace(/[\u0300-\u036f]/g,'')))) {
+      if (rule.sub) {
+        for (const sub of rule.sub) {
+          if (sub.keys.some(k => m.includes(k.normalize('NFD').replace(/[\u0300-\u036f]/g,'')))) {
+            return { resp: sub.resp, tipo: rule.tipo, urgente: rule.urgente||false, escala: rule.escala||false };
+          }
+        }
+      }
+      return { resp: rule.resp, tipo: rule.tipo, urgente: rule.urgente||false, escala: rule.escala||false };
+    }
+  }
+  return { resp: 'no_entiendo', tipo: 'consulta_general', urgente: false, escala: false };
+}
+
+// ── QUICK REPLIES CONTEXTUALES ────────────────────────────────
+const QR_MAP = {
+  calendario_1: ['¿Cuándo empieza el semestre 2?','¿Cuándo son los finales?','¿Hay intersemestral?'],
+  calendario_2: ['¿Cuándo empiezan inscripciones?','¿Cuándo es la ceremonia de grado?'],
+  inscripcion_pre: ['¿Qué documentos necesito?','¿Cuánto cuesta la inscripción?','Ver programas disponibles'],
+  docs_pre: ['¿Y para posgrado?','¿Cómo envío los documentos?'],
+  programas: ['¿Cómo me inscribo?','Ver posgrados'],
+  posgrados: ['¿Cómo me inscribo?','¿Cuánto cuesta?'],
+  financiacion: ['¿Cómo aplico al ICETEX?','Ver becas y descuentos'],
+  becas: ['Ver opciones de financiación','¿Cómo aplico?'],
+  grado_pre: ['¿Cuándo es la ceremonia?','¿Qué es el paz y salvo?','Grado en posgrado'],
+  cert_matricula: ['Necesito otro certificado','¿Tiene algún costo?'],
+  cert_notas: ['¿Cuánto demora?','Necesito otro certificado'],
+  default: ['📅 Calendario 2026','📜 Solicitar certificado','💰 Financiación y becas','🎓 Requisitos de grado','📞 Contactos']
+};
+
+function getQR(resp) {
+  return QR_MAP[resp] || QR_MAP.default;
+}
+
+function genTicket() {
+  const d = new Date();
+  const ds = d.toISOString().slice(0,10).replace(/-/g,'');
+  const n = Math.floor(1000 + Math.random()*9000);
+  return '#UD-' + ds + '-' + n;
+}
+
+// ── INICIO ────────────────────────────────────────────────────
+function iniciar() {
+  SHEETS_URL = document.getElementById('sheets-url').value.trim();
+  sessionStart = new Date();
+  document.getElementById('demo-panel').style.display = 'none';
+  document.getElementById('launcher').style.display = 'flex';
+  toggleChat();
+  setTimeout(bienvenida, 400);
+}
+
+function toggleChat() {
+  isOpen = !isOpen;
+  document.getElementById('chat-window').classList.toggle('open', isOpen);
+  if (isOpen) {
+    document.getElementById('notif-dot').style.display = 'none';
+    setTimeout(() => document.getElementById('user-input').focus(), 300);
+  }
+}
+
+function cerrarChat() {
+  if (totalMensajes > 0) {
+    document.getElementById('rating-overlay').classList.add('show');
+  } else toggleChat();
+}
+
+function cerrarSinValorar() {
+  document.getElementById('rating-overlay').classList.remove('show');
+  toggleChat();
+}
+
+function bienvenida() {
+  addMsg('bot', KB.bienvenida);
+  setTimeout(() => addQR([
+    '📅 Calendario 2026','📋 Inscripción y admisión',
+    '📜 Solicitar un certificado','💰 Financiación y becas',
+    '🎓 Requisitos de grado','🆘 Necesito ayuda urgente'
+  ]), 400);
+}
+
+// ── ENVIAR MENSAJE ────────────────────────────────────────────
+function enviar(text) {
+  const input = document.getElementById('user-input');
+  const msg = text || input.value.trim();
+  if (!msg) return;
+  input.value = ''; autoResize(input);
+  removeQR();
+  addMsg('user', msg);
+  totalMensajes++;
+
+  // Simular "escribiendo..."
+  const tid = showTyping();
+  setTimeout(() => {
+    removeTyping(tid);
+    responder(msg);
+  }, 600 + Math.random() * 400);
+}
+
+function responder(msg) {
+  const { resp, tipo, urgente, escala } = buscarRespuesta(msg);
+  tramiteDetectado = tipo;
+
+  if (tipo !== 'consulta_general') addTramiteTag(labelTipo(tipo));
+
+  const texto = KB[resp] || KB.no_entiendo;
+  addMsg('bot', texto);
+
+  if (urgente) {
+    requiereEscalamiento = true;
+    setTimeout(() => addAlertBadge(), 300);
+    const t = genTicket();
+    ticketNum = t;
+    setTimeout(() => addTicket(t, true), 500);
+  } else if (escala) {
+    requiereEscalamiento = true;
+    setTimeout(() => addEscBadge(), 300);
+    const t = genTicket();
+    ticketNum = t;
+    setTimeout(() => addTicket(t, true), 500);
+  }
+
+  setTimeout(() => addQR(getQR(resp)), 400);
+}
+
+function labelTipo(t) {
+  return {certificados:'📜 Certificados',inscripcion:'📋 Inscripción/Admisión',
+    financiacion:'💰 Financiación',calendario:'📅 Calendario',
+    grado:'🎓 Grado',apoyo:'🤝 Apoyo estudiantil'}[t] || '💬 Consulta';
+}
+
+// ── VALORACIÓN ────────────────────────────────────────────────
+function setStar(v) {
+  starRating = v;
+  document.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('on', i < v));
+}
+
+async function enviarValoracion() {
+  const nombre = document.getElementById('r-nombre').value.trim();
+  const correo = document.getElementById('r-correo').value.trim();
+  if (!nombre || !correo) { alert('Por favor completa nombre y correo.'); return; }
+  if (!correo.includes('@')) { alert('Ingresa un correo válido.'); return; }
+
+  const btn = document.getElementById('rbtn');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+
+  const payload = {
+    timestamp: new Date().toISOString(),
+    nombre, correo,
+    programa: document.getElementById('r-prog').value.trim() || 'No especificó',
+    semestre: document.getElementById('r-sem').value.trim() || 'No especificó',
+    tramite: document.getElementById('r-tramite').value || 'No especificó',
+    escalamiento: document.getElementById('r-esc').value,
+    calificacion: starRating || 'Sin calificar',
+    comentario: document.getElementById('r-com').value.trim() || 'Sin comentarios',
+    mensajes_enviados: totalMensajes,
+    duracion_minutos: Math.round((new Date() - sessionStart) / 60000),
+    canal: 'UniBot Web — Sin IA'
+  };
+
+  // Guardar local siempre
+  const saved = JSON.parse(localStorage.getItem('ud_valoraciones') || '[]');
+  saved.push(payload);
+  localStorage.setItem('ud_valoraciones', JSON.stringify(saved));
+
+  // Enviar a Sheets si hay URL
+  if (SHEETS_URL) {
+    try {
+      await fetch(SHEETS_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch(e) { console.warn('Sheets:', e); }
+  }
+
+  document.getElementById('rform').style.display = 'none';
+  document.getElementById('rsuccess').style.display = 'block';
+
+  setTimeout(() => {
+    document.getElementById('rating-overlay').classList.remove('show');
+    document.getElementById('rform').style.display = 'block';
+    document.getElementById('rsuccess').style.display = 'none';
+    btn.disabled = false; btn.textContent = 'Enviar valoración →';
+    ['r-nombre','r-correo','r-prog','r-sem','r-com'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('r-tramite').value = '';
+    starRating = 0;
+    document.querySelectorAll('.star').forEach(s => s.classList.remove('on'));
+    toggleChat();
+  }, 2800);
+}
+
+// ── UI HELPERS ────────────────────────────────────────────────
+function addMsg(role, text, isAlert=false) {
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = 'mrow ' + role;
+  const av = document.createElement('div');
+  av.className = 'mav ' + role;
+  if (role === 'bot') {
+    av.innerHTML = LOGO ? `<img src="${LOGO}" style="width:26px;height:26px;object-fit:contain" alt="U"/>` : '🤖';
+  } else { av.textContent = '👤'; }
+  const col = document.createElement('div'); col.style.maxWidth = '82%';
+  const bub = document.createElement('div');
+  bub.className = 'bubble ' + (isAlert ? 'alert' : role);
+  bub.innerHTML = md(text);
+  const t = document.createElement('div'); t.className = 'mtime';
+  t.textContent = new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+  col.appendChild(bub); col.appendChild(t);
+  row.appendChild(av); row.appendChild(col);
+  msgs.appendChild(row); msgs.scrollTop = msgs.scrollHeight;
+}
+
+function md(t) {
+  return t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/^- (.+)/gm,'<li>$1</li>')
+    .replace(/\n/g,'<br>');
+}
+
+function addQR(items) {
+  const msgs = document.getElementById('messages');
+  const w = document.createElement('div'); w.className='qr'; w.id='qr-wrap';
+  items.forEach(r => {
+    const b = document.createElement('button'); b.className='qrbtn'; b.textContent=r;
+    b.onclick = () => enviar(r); w.appendChild(b);
+  });
+  msgs.appendChild(w); msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeQR() { const q=document.getElementById('qr-wrap'); if(q)q.remove(); }
+
+function addTramiteTag(label) {
+  const msgs = document.getElementById('messages');
+  const t = document.createElement('div'); t.className='tramite-tag';
+  t.innerHTML = `<span style="font-size:10px;opacity:.7">Trámite:</span> ${label}`;
+  msgs.appendChild(t); msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addAlertBadge() {
+  const msgs = document.getElementById('messages');
+  const b = document.createElement('div'); b.className='alert-badge';
+  b.innerHTML=`<span style="font-size:16px;flex-shrink:0">🚨</span><div><strong>Alerta de acompañamiento activada</strong><br>Un asesor de permanencia será notificado. Tu bienestar es nuestra prioridad.</div>`;
+  msgs.appendChild(b); msgs.scrollTop=msgs.scrollHeight;
+}
+
+function addEscBadge() {
+  const msgs = document.getElementById('messages');
+  const b = document.createElement('div'); b.className='escalation-badge';
+  b.innerHTML=`<span style="font-size:16px;flex-shrink:0">🔁</span><div><strong>Escalado a asesor especializado</strong><br>Tu caso será atendido en horario hábil.</div>`;
+  msgs.appendChild(b); msgs.scrollTop=msgs.scrollHeight;
+}
+
+function addTicket(num, escalado=false) {
+  const msgs = document.getElementById('messages');
+  const c = document.createElement('div'); c.className='ticket';
+  c.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
+    <div class="tnum">${num}</div>
+    <div class="tstatus ${escalado?'esc':''}">${escalado?'Escalado':'Abierto'}</div>
+  </div>
+  <div class="trow"><span>Trámite</span><span>${labelTipo(tramiteDetectado)}</span></div>
+  <div class="trow"><span>Creado</span><span>${new Date().toLocaleDateString('es-CO')}</span></div>
+  <div class="trow"><span>Respuesta en</span><span>${escalado?'1 día hábil':'2 días hábiles'}</span></div>`;
+  msgs.appendChild(c); msgs.scrollTop=msgs.scrollHeight;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  const id = 'typ-'+Date.now(); row.id=id; row.className='mrow bot';
+  row.innerHTML=`<div class="mav bot">${LOGO?`<img src="${LOGO}" style="width:26px;height:26px;object-fit:contain"/>`:'🤖'}</div>
+    <div style="display:flex;align-items:center;gap:5px;padding:12px 16px;background:var(--light);border-radius:16px;border-bottom-left-radius:4px">
+      ${[1,2,3].map(i=>`<div style="width:7px;height:7px;background:var(--gray);border-radius:50%;animation:typing 1.2s ${(i-1)*.2}s ease-in-out infinite"></div>`).join('')}
+    </div>`;
+  msgs.appendChild(row); msgs.scrollTop=msgs.scrollHeight; return id;
+}
+
+function removeTyping(id) { const e=document.getElementById(id); if(e)e.remove(); }
+
+function clearChat() {
+  if(!confirm('¿Iniciar nueva conversación?')) return;
+  totalMensajes=0; tramiteDetectado=''; requiereEscalamiento=false;
+  ticketNum=''; sessionStart=new Date();
+  document.getElementById('messages').innerHTML='';
+  setTimeout(bienvenida, 200);
+}
+
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar();} }
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
+
+// Inyectar logo en el header y demo panel al cargar
+window.addEventListener('DOMContentLoaded', () => {
+  const hav = document.getElementById('hav');
+  hav.innerHTML = LOGO
+    ? `<img src="${LOGO}" style="width:40px;height:40px;object-fit:contain" alt="UniBot"/>`
+    : '🤖';
+  const logoWrap = document.getElementById('logo-wrap');
+  logoWrap.innerHTML = LOGO
+    ? `<img src="${LOGO}" style="height:56px;object-fit:contain" alt="Universo Digital"/>`
+    : `<div style="width:48px;height:48px;background:linear-gradient(135deg,var(--blue),var(--accent));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px">🎓</div>
+       <div style="font-size:22px;font-weight:600;color:var(--navy)">Universo<span style="color:var(--accent)">Digital</span></div>`;
+});
+</script>
+
+<style>
+@keyframes typing{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+</style>
+</body>
+</html>
