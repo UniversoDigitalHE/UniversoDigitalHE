@@ -288,12 +288,12 @@ body{font-family:var(--font);background:var(--light);min-height:100vh;display:fl
         </div>
         <label class="rlabel">Observaciones o sugerencias</label>
         <textarea class="rtextarea" id="r-com" placeholder="¿Qué funcionó bien? ¿Qué mejorarías?"></textarea>
-        <button id="rbtn" onclick="enviarValoracion()">Enviar valoración →</button>
+        <button id="rbtn" onclick="enviarValoracion()">Continuar en Google Forms →</button>
       </div>
       <div id="rsuccess">
         <div class="sicon">🎉</div>
-        <h3>¡Gracias por tu valoración!</h3>
-        <p>Tu opinión queda registrada y mejora UniBot para todos los estudiantes de Universo Digital.</p>
+        <h3>¡Abriendo el formulario!</h3>
+        <p>Se abrirá Google Forms con tus datos prellenados. Solo haz clic en <strong>"Enviar"</strong> para completar tu valoración.</p>
       </div>
     </div>
   </div>
@@ -305,7 +305,19 @@ body{font-family:var(--font);background:var(--light);min-height:100vh;display:fl
 const LOGO = ''; // vacío — se usa emoji de fallback si no hay logo
 
 // ── ESTADO ────────────────────────────────────────────────────
-let SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwZHoxS9y4nRXFAPsdOpLher117ikIWts5tny83T6IUQXmuwSP72NL2AXih-mSixeKDCg/exec';
+let SHEETS_URL = ''; // Ya no se usa Apps Script
+const FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSeJTJSFt8fxWp_FcDxsGxxvpdVWSBJm_HIquVe_H0KcrPrq_g/viewform?usp=pp_url';
+const FORM_ENTRIES = {
+  nombre:      'entry.232858778',
+  cedula:      'entry.1318002423',
+  correo:      'entry.1777207936',
+  programa:    'entry.1842961733',
+  semestre:    'entry.1137801687',
+  temas:       'entry.782562642',
+  tramite:     'entry.763942588',
+  calificacion:'entry.1316849586',
+  comentario:  'entry.1397613949'
+};
 let GEMINI_KEY = 'AIzaSyB5ZYg04hrE-vuTTWazWQhoWit1jVXOTsA';
 let isOpen = false, starRating = 0, totalMensajes = 0;
 let usuarioIdentificado = false;
@@ -754,27 +766,18 @@ function activarAsesor() {
 Tu caso ha sido registrado con el número:`);
   setTimeout(() => addTicket(t, true), 400);
   // Guardar en Sheets la solicitud de asesor
-  if (SHEETS_URL) {
-    const payload = {
-      timestamp: new Date().toISOString(),
-      nombre: usuarioNombre,
-      cedula: usuarioCedula,
-      correo: usuarioCorreo,
-      programa: 'Pendiente',
-      semestre: 'Pendiente',
-      tramite: tramiteDetectado || 'Solicitud de asesor',
-      temas_consultados: temasConsultados.join(' | ') || 'No clasificado',
-      escalamiento: 'Sí - solicitado por el estudiante',
-      calificacion: 'Pendiente valoración',
-      comentario: 'Estudiante solicitó asesor desde el chat',
-      mensajes_enviados: totalMensajes,
-      duracion_minutos: Math.round((new Date() - sessionStart) / 60000),
-      canal: 'UniBot Web — Solicitud asesor'
-    };
-    fetch(SHEETS_URL, { method:'POST', mode:'no-cors',
-      headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
-    }).catch(e => console.warn('Sheets:', e));
-  }
+  // Abrir Google Forms prellenado con datos del estudiante
+  const asesorParams = new URLSearchParams();
+  asesorParams.set(FORM_ENTRIES.nombre, usuarioNombre || '');
+  asesorParams.set(FORM_ENTRIES.cedula, usuarioCedula || '');
+  let correoAsesor = usuarioCorreo || '';
+  if (correoAsesor && !correoAsesor.includes('@')) correoAsesor += '@univdigital.edu.co';
+  asesorParams.set(FORM_ENTRIES.correo, correoAsesor);
+  asesorParams.set(FORM_ENTRIES.temas, temasConsultados.join(' | ') || 'Solicitud de asesor');
+  asesorParams.set(FORM_ENTRIES.tramite, tramiteDetectado || 'Solicitud de asesor');
+  asesorParams.set(FORM_ENTRIES.comentario, 'Estudiante solicitó hablar con un asesor desde el chat');
+  const asesorUrl = FORM_BASE + '&' + asesorParams.toString();
+  setTimeout(() => window.open(asesorUrl, '_blank'), 800);
 }
 
 function labelTipo(t) {
