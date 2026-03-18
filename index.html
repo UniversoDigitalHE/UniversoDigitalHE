@@ -269,9 +269,9 @@ body{font-family:var(--font);background:var(--light);min-height:100vh;display:fl
           <div id="r-temas-list" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:5px"></div>
         </div>
         <label class="rlabel">Nombre completo</label>
-        <input type="text" class="rinput" id="r-nombre" placeholder="Ej: Laura García" readonly style="opacity:.7"/>
+        <input type="text" class="rinput" id="r-nombre" placeholder="Ej: Laura García"/>
         <label class="rlabel">Correo electrónico</label>
-        <input type="email" class="rinput" id="r-correo" placeholder="tu@correo.com" readonly style="opacity:.7"/>
+        <input type="email" class="rinput" id="r-correo" placeholder="tu@correo.com"/>
         <div class="rrow">
           <div><label class="rlabel">Programa</label><input type="text" class="rinput" id="r-prog" placeholder="Ej: Ing. Sistemas" style="margin-bottom:0"/></div>
           <div><label class="rlabel">Semestre</label><input type="text" class="rinput" id="r-sem" placeholder="Ej: 5°" style="margin-bottom:0"/></div>
@@ -476,7 +476,12 @@ function cerrarChat() {
   if (totalMensajes > 0) {
     // Prellenar datos del usuario identificado
     document.getElementById('r-nombre').value = usuarioNombre || '';
-    document.getElementById('r-correo').value = usuarioCorreo || '';
+    // Añadir dominio institucional si el correo no tiene @
+    let correoFinal = usuarioCorreo || '';
+    if (correoFinal && !correoFinal.includes('@')) {
+      correoFinal = correoFinal + '@univdigital.edu.co';
+    }
+    document.getElementById('r-correo').value = correoFinal;
     // Tomar trámite y escalamiento desde la sesión (no del formulario)
     document.getElementById('r-tramite').value = tramiteDetectado || '';
     document.getElementById('r-esc').value = requiereEscalamiento ? 'Sí - solicitado por el estudiante' : 'No';
@@ -786,9 +791,12 @@ function setStar(v) {
 
 async function enviarValoracion() {
   const nombre = document.getElementById('r-nombre').value.trim();
-  const correo = document.getElementById('r-correo').value.trim();
+  let correo = document.getElementById('r-correo').value.trim();
+  if (correo && !correo.includes('@')) {
+    correo = correo + '@univdigital.edu.co';
+  }
   if (!nombre || !correo) { alert('Por favor completa nombre y correo.'); return; }
-  if (!correo.includes('@')) { alert('Ingresa un correo válido.'); return; }
+  if (!correo.includes('@') || !correo.includes('.')) { alert('El correo no es válido. Verifica e intenta de nuevo.'); return; }
 
   const btn = document.getElementById('rbtn');
   btn.disabled = true; btn.textContent = 'Enviando…';
