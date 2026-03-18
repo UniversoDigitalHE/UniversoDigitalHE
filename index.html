@@ -292,8 +292,17 @@ body{font-family:var(--font);background:var(--light);min-height:100vh;display:fl
       </div>
       <div id="rsuccess">
         <div class="sicon">🎉</div>
-        <h3>¡Abriendo el formulario!</h3>
-        <p>Se abrirá Google Forms con tus datos prellenados. Solo haz clic en <strong>"Enviar"</strong> para completar tu valoración.</p>
+        <h3>¡Listo! Ya casi terminas</h3>
+        <p style="margin-bottom:16px">Tus datos están prellenados. Haz clic abajo para abrir el formulario y luego clic en <strong>"Enviar"</strong>.</p>
+        <a id="form-link" href="#" target="_blank"
+          onclick="setTimeout(cerrarValoracion,1500)"
+          style="display:block;background:linear-gradient(135deg,#1B2E5E,#2EC4B6);color:white;text-decoration:none;border-radius:12px;padding:13px;font-size:14px;font-weight:600;text-align:center;margin-bottom:10px">
+          Abrir formulario de valoración →
+        </a>
+        <button onclick="cerrarValoracion()"
+          style="width:100%;background:transparent;border:0.5px solid #DDE3EE;border-radius:12px;padding:10px;font-family:inherit;font-size:13px;color:#6B7A90;cursor:pointer">
+          Cerrar sin valorar
+        </button>
       </div>
     </div>
   </div>
@@ -777,7 +786,14 @@ Tu caso ha sido registrado con el número:`);
   asesorParams.set(FORM_ENTRIES.tramite, tramiteDetectado || 'Solicitud de asesor');
   asesorParams.set(FORM_ENTRIES.comentario, 'Estudiante solicitó hablar con un asesor desde el chat');
   const asesorUrl = FORM_BASE + '&' + asesorParams.toString();
-  setTimeout(() => window.open(asesorUrl, '_blank'), 800);
+  // Abrir formulario directamente como enlace
+  const linkAsesor = document.createElement('a');
+  linkAsesor.href = asesorUrl;
+  linkAsesor.target = '_blank';
+  linkAsesor.rel = 'noopener';
+  document.body.appendChild(linkAsesor);
+  linkAsesor.click();
+  document.body.removeChild(linkAsesor);
 }
 
 function labelTipo(t) {
@@ -792,67 +808,60 @@ function setStar(v) {
   document.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('on', i < v));
 }
 
-async function enviarValoracion() {
+async function construirFormUrl() {
   const nombre = document.getElementById('r-nombre').value.trim();
   let correo = document.getElementById('r-correo').value.trim();
-  if (correo && !correo.includes('@')) {
-    correo = correo + '@univdigital.edu.co';
-  }
-  if (!nombre || !correo) { alert('Por favor completa nombre y correo.'); return; }
-  if (!correo.includes('@') || !correo.includes('.')) { alert('El correo no es válido. Verifica e intenta de nuevo.'); return; }
-
-  const btn = document.getElementById('rbtn');
-  btn.disabled = true; btn.textContent = 'Enviando…';
-
-  const payload = {
-    timestamp: new Date().toISOString(),
-    nombre, correo,
-    cedula: usuarioCedula,
-    programa: document.getElementById('r-prog').value.trim() || 'No especificó',
-    semestre: document.getElementById('r-sem').value.trim() || 'No especificó',
-    tramite: document.getElementById('r-tramite').value || 'No especificó',
-    temas_consultados: temasConsultados.length > 0 ? temasConsultados.join(' | ') : 'No clasificado',
-    escalamiento: document.getElementById('r-esc').value,
-    calificacion: starRating || 'Sin calificar',
-    comentario: document.getElementById('r-com').value.trim() || 'Sin comentarios',
-    mensajes_enviados: totalMensajes,
-    duracion_minutos: Math.round((new Date() - sessionStart) / 60000),
-    canal: 'UniBot Web — Sin IA'
-  };
-
-  // Guardar local siempre
-  const saved = JSON.parse(localStorage.getItem('ud_valoraciones') || '[]');
-  saved.push(payload);
-  localStorage.setItem('ud_valoraciones', JSON.stringify(saved));
-
-  // Enviar a Sheets si hay URL
-  if (SHEETS_URL) {
-    try {
-      await fetch(SHEETS_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    } catch(e) { console.warn('Sheets:', e); }
-  }
-
-  document.getElementById('rform').style.display = 'none';
-  document.getElementById('rsuccess').style.display = 'block';
-
-  setTimeout(() => {
-    document.getElementById('rating-overlay').classList.remove('show');
-    document.getElementById('rform').style.display = 'block';
-    document.getElementById('rsuccess').style.display = 'none';
-    btn.disabled = false; btn.textContent = 'Enviar valoración →';
-    ['r-nombre','r-correo','r-prog','r-sem','r-com'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('r-tramite').value = '';
-    starRating = 0;
-    document.querySelectorAll('.star').forEach(s => s.classList.remove('on'));
-    toggleChat();
-  }, 2800);
+  if (correo && !correo.includes('@')) correo = correo + '@univdigital.edu.co';
+  const programa = document.getElementById('r-prog').value.trim() || 'No especificó';
+  const semestre = document.getElementById('r-sem').value.trim() || 'No especificó';
+  const temas = temasConsultados.join(' | ') || 'No clasificado';
+  const tramite = tramiteDetectado || 'consulta_general';
+  const cal = starRating || '';
+  const comentario = document.getElementById('r-com').value.trim() || '';
+  const params = new URLSearchParams();
+  params.set(FORM_ENTRIES.nombre, nombre);
+  params.set(FORM_ENTRIES.cedula, usuarioCedula || '');
+  params.set(FORM_ENTRIES.correo, correo);
+  params.set(FORM_ENTRIES.programa, programa);
+  params.set(FORM_ENTRIES.semestre, semestre);
+  params.set(FORM_ENTRIES.temas, temas);
+  params.set(FORM_ENTRIES.tramite, tramite);
+  if (cal) params.set(FORM_ENTRIES.calificacion, String(cal));
+  params.set(FORM_ENTRIES.comentario, comentario);
+  return FORM_BASE + '&' + params.toString();
 }
 
-// ── UI HELPERS ────────────────────────────────────────────────
+function limpiarTodo() {
+  ['r-nombre','r-correo','r-prog','r-sem','r-com'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('r-tramite').value = '';
+  const tw = document.getElementById('r-temas-wrap');
+  if (tw) { tw.style.display = 'none'; document.getElementById('r-temas-list').innerHTML = ''; }
+  starRating = 0;
+  document.querySelectorAll('.star').forEach(s => s.classList.remove('on'));
+  temasConsultados = [];
+}
+
+function cerrarValoracion() {
+  document.getElementById('rating-overlay').classList.remove('show');
+  document.getElementById('rform').style.display = 'block';
+  document.getElementById('rsuccess').style.display = 'none';
+  limpiarTodo();
+  toggleChat();
+}
+
+function enviarValoracion() {
+  const nombre = document.getElementById('r-nombre').value.trim();
+  if (!nombre) { alert('Por favor ingresa tu nombre.'); return; }
+  // Actualizar href del enlace con datos actuales
+  document.getElementById('form-link').href = construirFormUrl();
+  // Mostrar panel de éxito con el enlace clickeable
+  document.getElementById('rform').style.display = 'none';
+  document.getElementById('rsuccess').style.display = 'block';
+}
+
+
 function addMsg(role, text, isAlert=false) {
   const msgs = document.getElementById('messages');
   const row = document.createElement('div');
