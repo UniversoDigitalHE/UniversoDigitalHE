@@ -268,53 +268,16 @@ body{font-family:var(--font);background:var(--light);min-height:100vh;display:fl
           <span style="font-weight:500;color:var(--navy)">Temas consultados en esta sesión:</span>
           <div id="r-temas-list" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:5px"></div>
         </div>
-        <label class="rlabel">Nombre completo *</label>
-        <input type="text" class="rinput" id="r-nombre" placeholder="Ej: Laura García"/>
-        <label class="rlabel">Correo electrónico *</label>
-        <input type="email" class="rinput" id="r-correo" placeholder="tu@correo.com"/>
+        <label class="rlabel">Nombre completo</label>
+        <input type="text" class="rinput" id="r-nombre" placeholder="Ej: Laura García" readonly style="opacity:.7"/>
+        <label class="rlabel">Correo electrónico</label>
+        <input type="email" class="rinput" id="r-correo" placeholder="tu@correo.com" readonly style="opacity:.7"/>
         <div class="rrow">
           <div><label class="rlabel">Programa</label><input type="text" class="rinput" id="r-prog" placeholder="Ej: Ing. Sistemas" style="margin-bottom:0"/></div>
           <div><label class="rlabel">Semestre</label><input type="text" class="rinput" id="r-sem" placeholder="Ej: 5°" style="margin-bottom:0"/></div>
         </div>
-        <label class="rlabel" style="margin-top:11px">Tipo de trámite consultado</label>
-        <select class="rselect" id="r-tramite">
-          <option value="">— Selecciona —</option>
-          <optgroup label="Admisiones">
-            <option>Proceso de inscripción pregrado</option>
-            <option>Proceso de inscripción posgrado</option>
-            <option>Documentos de legalización</option>
-          </optgroup>
-          <optgroup label="Certificados">
-            <option>Certificado de admisión</option>
-            <option>Certificado de matrícula</option>
-            <option>Certificado de horarios</option>
-            <option>Certificado de terminación de materias</option>
-            <option>Certificado de notas</option>
-            <option>Certificado de egresado</option>
-          </optgroup>
-          <optgroup label="Financiación">
-            <option>Financiación directa</option>
-            <option>ICETEX u otras entidades</option>
-            <option>Becas y descuentos</option>
-          </optgroup>
-          <optgroup label="Académico">
-            <option>Calendario y fechas</option>
-            <option>Requisitos de grado</option>
-            <option>Cancelación de matrícula</option>
-          </optgroup>
-          <optgroup label="Apoyo">
-            <option>Permanencia y retención</option>
-            <option>Situación de emergencia</option>
-          </optgroup>
-          <option>Otro</option>
-        </select>
-        <label class="rlabel">¿Requirió escalamiento a un asesor?</label>
-        <select class="rselect" id="r-esc">
-          <option value="No">No — UniBot resolvió mi consulta</option>
-          <option value="Sí - solicitado por mí">Sí — lo solicité yo</option>
-          <option value="Sí - sugerido por UniBot">Sí — UniBot me lo sugirió</option>
-          <option value="Sí - alerta de deserción">Sí — se activó alerta</option>
-        </select>
+        <input type="hidden" id="r-tramite" value=""/>
+        <input type="hidden" id="r-esc" value=""/>
         <label class="rlabel">¿Cómo calificarías tu experiencia?</label>
         <div class="stars">
           <span class="star" onclick="setStar(1)">⭐</span>
@@ -344,6 +307,9 @@ const LOGO = ''; // vacío — se usa emoji de fallback si no hay logo
 // ── ESTADO ────────────────────────────────────────────────────
 let SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwZHoxS9y4nRXFAPsdOpLher117ikIWts5tny83T6IUQXmuwSP72NL2AXih-mSixeKDCg/exec';
 let isOpen = false, starRating = 0, totalMensajes = 0;
+let usuarioIdentificado = false;
+let usuarioNombre = '', usuarioCedula = '', usuarioCorreo = '';
+let esperandoCampo = ''; // 'nombre' | 'cedula' | 'correo' | ''
 let temasConsultados = [];
 let sessionStart = new Date(), tramiteDetectado = '', requiereEscalamiento = false;
 let ticketNum = '';
@@ -362,7 +328,14 @@ const KB = {
 
   docs_pos: `**Documentos de legalización — posgrado**\n\nEspecialización y maestría:\n- Documento de identidad (ambas caras)\n- Acta de grado de pregrado\n- Certificado EPS o Sisbén\n- Fotografía JPG fondo blanco\n- Formato de verificación de documentos\n\nDoctorado además requiere:\n- Acta de grado de maestría\n- Certificado de inglés\n- Carta de disponibilidad`,
 
-  programas: `**Oferta de programas de pregrado**\n\n- **Agropecuarias:** Medicina Veterinaria, Zootecnia, Ing. Agronómica, Ing. Alimentos\n- **Ingeniería:** Civil, Eléctrica, Ambiental, Sistemas, Industrial\n- **Economía y Empresa:** Admón Empresas, Contaduría, Economía\n- **Negocios:** Negocios Internacionales, Admón Agronegocios\n- **Humanidades:** Trabajo Social, Filosofía, Ciencias Políticas\n- **Salud:** Optometría, Bacteriología\n- **Arquitectura:** Arquitectura, Diseño de Espacios\n- **Educación:** Lic. Lengua Castellana, Lic. Ed. Religiosa, Lic. Filosofía`,
+  prog_random: '',
+  get programas() {
+    const todos = ["Medicina Veterinaria", "Zootecnia", "Ingeniería Agronómica", "Ingeniería de Alimentos", "Ingeniería Civil", "Ingeniería Eléctrica", "Ingeniería Ambiental", "Ingeniería de Sistemas", "Ingeniería Industrial", "Administración de Empresas", "Contaduría Pública", "Economía", "Negocios y Relaciones Internacionales", "Administración de Agronegocios", "Trabajo Social", "Filosofía y Letras", "Ciencias Políticas", "Optometría", "Bacteriología", "Arquitectura", "Diseño de Espacios y Escenarios", "Lic. en Lengua Castellana", "Lic. en Educación Religiosa", "Lic. en Filosofía"];
+    const mezclados = todos.sort(() => Math.random() - 0.5);
+    const lista = mezclados.map(p => `- ${p}`).join('\n');
+    return `**Programas de pregrado disponibles**\n\n${lista}\n\n¿Te interesa alguno en particular? Puedo orientarte sobre el proceso de inscripción.`;
+  },
+  _programas_orig: `**Oferta de programas de pregrado**\n\n- **Agropecuarias:** Medicina Veterinaria, Zootecnia, Ing. Agronómica, Ing. Alimentos\n- **Ingeniería:** Civil, Eléctrica, Ambiental, Sistemas, Industrial\n- **Economía y Empresa:** Admón Empresas, Contaduría, Economía\n- **Negocios:** Negocios Internacionales, Admón Agronegocios\n- **Humanidades:** Trabajo Social, Filosofía, Ciencias Políticas\n- **Salud:** Optometría, Bacteriología\n- **Arquitectura:** Arquitectura, Diseño de Espacios\n- **Educación:** Lic. Lengua Castellana, Lic. Ed. Religiosa, Lic. Filosofía`,
 
   posgrados: `**Oferta de posgrados**\n\nEspecializaciones:\n- Gerencia de Empresas\n- Gerencia de Proyectos\n- Pedagogía\n\nMaestría:\n- Administración\n- Docencia\n- Filosofía\n\nDoctorado:\n- Educación y Sociedad\n- Agrociencias\n\nCosto de inscripción: **$52.500 COP** en todos los niveles`,
 
@@ -415,7 +388,7 @@ const RULES = [
   { keys:['document','legaliz','papeles','qué necesito','requisitos para inscrib'], sub:[
     { keys:['posgrado','especiali','maestría','maestria','doctorado'], resp:'docs_pos' },
   ], resp:'docs_pre', tipo:'inscripcion' },
-  { keys:['program','carrera','facultad','qué estudiar','oferta'], sub:[
+  { keys:['program','carrera','facultad','que estudiar','oferta'], sub:[
     { keys:['posgrado','especiali','maestría','maestria','doctorado'], resp:'posgrados' },
   ], resp:'programas', tipo:'inscripcion' },
   { keys:['posgrado','especiali','maestría','maestria','doctorado'], resp:'posgrados', tipo:'inscripcion' },
@@ -433,12 +406,15 @@ const RULES = [
 ];
 
 function buscarRespuesta(msg) {
-  const m = msg.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  // Limpiar emojis y caracteres especiales antes de buscar
+  const m = msg.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9 áéíóúüñ]/g,' ');
   for (const rule of RULES) {
-    if (rule.keys.some(k => m.includes(k.normalize('NFD').replace(/[\u0300-\u036f]/g,'')))) {
+    if (rule.keys.some(k => m.includes(k.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 áéíóúüñ]/g,' ')))) {
       if (rule.sub) {
         for (const sub of rule.sub) {
-          if (sub.keys.some(k => m.includes(k.normalize('NFD').replace(/[\u0300-\u036f]/g,'')))) {
+          if (sub.keys.some(k => m.includes(k.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 áéíóúüñ]/g,' ')))) {
             return { resp: sub.resp, tipo: rule.tipo, urgente: rule.urgente||false, escala: rule.escala||false };
           }
         }
@@ -497,7 +473,13 @@ function toggleChat() {
 
 function cerrarChat() {
   if (totalMensajes > 0) {
-    // Mostrar temas consultados en el formulario
+    // Prellenar datos del usuario identificado
+    document.getElementById('r-nombre').value = usuarioNombre || '';
+    document.getElementById('r-correo').value = usuarioCorreo || '';
+    // Tomar trámite y escalamiento desde la sesión (no del formulario)
+    document.getElementById('r-tramite').value = tramiteDetectado || '';
+    document.getElementById('r-esc').value = requiereEscalamiento ? 'Sí - solicitado por el estudiante' : 'No';
+    // Mostrar temas consultados
     const wrap = document.getElementById('r-temas-wrap');
     const list = document.getElementById('r-temas-list');
     if (temasConsultados.length > 0) {
@@ -516,12 +498,17 @@ function cerrarSinValorar() {
 }
 
 function bienvenida() {
-  addMsg('bot', KB.bienvenida);
+  usuarioIdentificado = false;
+  usuarioNombre = ''; usuarioCedula = ''; usuarioCorreo = '';
+  esperandoCampo = 'nombre';
+  addMsg('bot', '**Aviso de privacidad** — Al interactuar con UniBot aceptas el tratamiento de tus datos personales por parte de **Universo Digital** conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013. Tus datos se usarán exclusivamente para orientación académica y seguimiento estudiantil.');
+  setTimeout(() => addMsg('bot', KB.bienvenida), 800);
+  setTimeout(() => addMsg('bot', 'Para comenzar, dime por favor tu **nombre completo**:'), 1400);
   setTimeout(() => addQR([
     '📅 Calendario 2026','📋 Inscripción y admisión',
-    '📜 Solicitar un certificado','💰 Financiación y becas',
+    '📜 Certificados','💰 Financiación y becas',
     '🎓 Requisitos de grado','🆘 Necesito ayuda urgente'
-  ]), 400);
+  ]), 1200);
 }
 
 // ── ENVIAR MENSAJE ────────────────────────────────────────────
@@ -532,6 +519,41 @@ function enviar(text) {
   input.value = ''; autoResize(input);
   removeQR();
   addMsg('user', msg);
+
+  // Flujo de identificación previa
+  if (!usuarioIdentificado) {
+    if (esperandoCampo === 'nombre') {
+      usuarioNombre = msg;
+      esperandoCampo = 'cedula';
+      const tid = showTyping();
+      setTimeout(() => { removeTyping(tid); addMsg('bot', `Gracias **${usuarioNombre}**. Ahora ingresa tu **número de cédula**:`); }, 500);
+      return;
+    }
+    if (esperandoCampo === 'cedula') {
+      usuarioCedula = msg;
+      esperandoCampo = 'correo';
+      const tid = showTyping();
+      setTimeout(() => { removeTyping(tid); addMsg('bot', 'Por último, ingresa tu **correo electrónico** (sin @univdigital.edu.co si es institucional):'); }, 500);
+      return;
+    }
+    if (esperandoCampo === 'correo') {
+      usuarioCorreo = msg;
+      usuarioIdentificado = true;
+      esperandoCampo = '';
+      const tid = showTyping();
+      setTimeout(() => {
+        removeTyping(tid);
+        addMsg('bot', `¡Listo **${usuarioNombre}**! Ya puedo ayudarte. ¿Con qué tema quieres empezar?`);
+        setTimeout(() => addQR([
+          '📅 Calendario 2026','📋 Inscripción y admisión',
+          '📜 Certificados','💰 Financiación y becas',
+          '🎓 Requisitos de grado','🆘 Necesito ayuda urgente'
+        ]), 400);
+      }, 600);
+      return;
+    }
+  }
+
   totalMensajes++;
 
   // Simular "escribiendo..."
@@ -543,6 +565,30 @@ function enviar(text) {
 }
 
 function responder(msg) {
+  // Menú especial de certificados
+  const mLow = msg.toLowerCase().replace(/[^a-záéíóúüñ0-9 ]/g,'').trim();
+  if (mLow === 'certificados' || mLow === 'solicitar un certificado' || mLow === 'solicitar certificado') {
+    addMsg('bot', '¿Qué tipo de certificado necesitas?');
+    setTimeout(() => addQR([
+      'Certificado de matrícula',
+      'Certificado de admisión',
+      'Certificado de notas',
+      'Certificado de horarios',
+      'Certificado de terminación de materias',
+      'Certificado de egresado'
+    ]), 300);
+    tramiteDetectado = 'certificados';
+    if (!temasConsultados.includes('📜 Certificados')) temasConsultados.push('📜 Certificados');
+    totalMensajes++;
+    return;
+  }
+
+  // Menú especial de ayuda urgente
+  if (mLow === 'necesito ayuda urgente' || mLow === 'ayuda urgente') {
+    responder('no puedo más necesito ayuda');
+    return;
+  }
+
   const { resp, tipo, urgente, escala } = buscarRespuesta(msg);
   tramiteDetectado = tipo;
 
@@ -571,7 +617,57 @@ function responder(msg) {
     setTimeout(() => addTicket(t, true), 500);
   }
 
-  setTimeout(() => addQR(getQR(resp)), 400);
+  setTimeout(() => {
+    addQR(getQR(resp));
+    addBotonAsesor();
+  }, 400);
+}
+
+function addBotonAsesor() {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding:4px 0 0 38px;animation:min .3s ease';
+  const btn = document.createElement('button');
+  btn.className = 'qrbtn';
+  btn.style.cssText = 'background:var(--accent2);border-color:var(--accent2);color:white;font-weight:500';
+  btn.textContent = '👤 Hablar con un asesor';
+  btn.onclick = () => activarAsesor();
+  wrap.appendChild(btn);
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function activarAsesor() {
+  removeQR();
+  requiereEscalamiento = true;
+  const t = genTicket();
+  ticketNum = t;
+  addMsg('bot', `**${usuarioNombre || 'Estudiante'}**, un asesor de Universo Digital se pondrá en contacto contigo **a la mayor brevedad posible** a los datos de contacto registrados en nuestros sistemas.
+
+Tu caso ha sido registrado con el número:`);
+  setTimeout(() => addTicket(t, true), 400);
+  // Guardar en Sheets la solicitud de asesor
+  if (SHEETS_URL) {
+    const payload = {
+      timestamp: new Date().toISOString(),
+      nombre: usuarioNombre,
+      cedula: usuarioCedula,
+      correo: usuarioCorreo,
+      programa: 'Pendiente',
+      semestre: 'Pendiente',
+      tramite: tramiteDetectado || 'Solicitud de asesor',
+      temas_consultados: temasConsultados.join(' | ') || 'No clasificado',
+      escalamiento: 'Sí - solicitado por el estudiante',
+      calificacion: 'Pendiente valoración',
+      comentario: 'Estudiante solicitó asesor desde el chat',
+      mensajes_enviados: totalMensajes,
+      duracion_minutos: Math.round((new Date() - sessionStart) / 60000),
+      canal: 'UniBot Web — Solicitud asesor'
+    };
+    fetch(SHEETS_URL, { method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    }).catch(e => console.warn('Sheets:', e));
+  }
 }
 
 function labelTipo(t) {
@@ -598,6 +694,7 @@ async function enviarValoracion() {
   const payload = {
     timestamp: new Date().toISOString(),
     nombre, correo,
+    cedula: usuarioCedula,
     programa: document.getElementById('r-prog').value.trim() || 'No especificó',
     semestre: document.getElementById('r-sem').value.trim() || 'No especificó',
     tramite: document.getElementById('r-tramite').value || 'No especificó',
@@ -733,6 +830,7 @@ function clearChat() {
   if(!confirm('¿Iniciar nueva conversación?')) return;
   totalMensajes=0; tramiteDetectado=''; requiereEscalamiento=false;
   ticketNum=''; sessionStart=new Date(); temasConsultados=[];
+  usuarioIdentificado=false; usuarioNombre=''; usuarioCedula=''; usuarioCorreo=''; esperandoCampo='nombre';
   document.getElementById('messages').innerHTML='';
   setTimeout(bienvenida, 200);
 }
