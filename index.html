@@ -288,21 +288,12 @@ body{font-family:var(--font);background:var(--light);min-height:100vh;display:fl
         </div>
         <label class="rlabel">Observaciones o sugerencias</label>
         <textarea class="rtextarea" id="r-com" placeholder="¿Qué funcionó bien? ¿Qué mejorarías?"></textarea>
-        <button id="rbtn" onclick="enviarValoracion()">Continuar en Google Forms →</button>
+        <button id="rbtn" onclick="abrirForms(this)">Continuar en Google Forms →</button>
       </div>
       <div id="rsuccess">
         <div class="sicon">🎉</div>
-        <h3>¡Listo! Ya casi terminas</h3>
-        <p style="margin-bottom:16px">Tus datos están prellenados. Haz clic abajo para abrir el formulario y luego clic en <strong>"Enviar"</strong>.</p>
-        <a id="form-link" href="#" target="_blank"
-          onclick="setTimeout(cerrarValoracion,1500)"
-          style="display:block;background:linear-gradient(135deg,#1B2E5E,#2EC4B6);color:white;text-decoration:none;border-radius:12px;padding:13px;font-size:14px;font-weight:600;text-align:center;margin-bottom:10px">
-          Abrir formulario de valoración →
-        </a>
-        <button onclick="cerrarValoracion()"
-          style="width:100%;background:transparent;border:0.5px solid #DDE3EE;border-radius:12px;padding:10px;font-family:inherit;font-size:13px;color:#6B7A90;cursor:pointer">
-          Cerrar sin valorar
-        </button>
+        <h3>¡Gracias por tu valoración!</h3>
+        <p>El formulario se abrió en una nueva pestaña. Solo haz clic en <strong>"Enviar"</strong> allí para completarlo.</p>
       </div>
     </div>
   </div>
@@ -851,15 +842,26 @@ function cerrarValoracion() {
   toggleChat();
 }
 
-function enviarValoracion() {
+function abrirForms(btn) {
   const nombre = document.getElementById('r-nombre').value.trim();
   if (!nombre) { alert('Por favor ingresa tu nombre.'); return; }
-  // Actualizar href del enlace con datos actuales
-  document.getElementById('form-link').href = construirFormUrl();
-  // Mostrar panel de éxito con el enlace clickeable
-  document.getElementById('rform').style.display = 'none';
-  document.getElementById('rsuccess').style.display = 'block';
+  const url = construirFormUrl();
+  // Abrir directamente como si fuera un clic en un enlace
+  btn.textContent = '✓ Abriendo formulario...';
+  btn.disabled = true;
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Cerrar el panel después de un momento
+  setTimeout(cerrarValoracion, 1200);
 }
+
+function enviarValoracion() { abrirForms(document.getElementById('rbtn')); }
 
 
 function addMsg(role, text, isAlert=false) {
