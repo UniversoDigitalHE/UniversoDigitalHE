@@ -502,14 +502,12 @@ function bienvenida() {
   usuarioIdentificado = false;
   usuarioNombre = ''; usuarioCedula = ''; usuarioCorreo = '';
   esperandoCampo = 'nombre';
+
+  // 1. Aviso de privacidad
   addMsg('bot', '**Aviso de privacidad** — Al interactuar con UniBot aceptas el tratamiento de tus datos personales por parte de **Universo Digital** conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013. Tus datos se usarán exclusivamente para orientación académica y seguimiento estudiantil.');
-  setTimeout(() => addMsg('bot', KB.bienvenida), 800);
-  setTimeout(() => addMsg('bot', 'Para comenzar, dime por favor tu **nombre completo**:'), 1400);
-  setTimeout(() => addQR([
-    '📅 Calendario 2026','📋 Inscripción y admisión',
-    '📜 Certificados','💰 Financiación y becas',
-    '🎓 Requisitos de grado','🆘 Necesito ayuda urgente'
-  ]), 1200);
+
+  // 2. Saludo + solicitud de nombre
+  setTimeout(() => addMsg('bot', '¡Hola! Mi nombre es **UniBot** y soy tu asesor virtual de **Universo Digital** 🎓\n\nEstoy aquí para ayudarte de forma ágil y confidencial.\n\nPara comenzar, dime por favor tu **nombre completo**:'), 1000);
 }
 
 // ── ENVIAR MENSAJE ────────────────────────────────────────────
@@ -544,12 +542,12 @@ async function enviar(text) {
       const tid = showTyping();
       setTimeout(() => {
         removeTyping(tid);
-        addMsg('bot', `¡Listo **${usuarioNombre}**! Ya puedo ayudarte. ¿Con qué tema quieres empezar?`);
+        addMsg('bot', `¡Hola **${usuarioNombre}**! Soy UniBot, el asesor virtual de **Universo Digital** 🎓\n\nYa quedaste registrado. Estoy aquí para ayudarte de forma ágil y confidencial. ¿Con qué tema quieres empezar?`);
         setTimeout(() => addQR([
           '📅 Calendario 2026','📋 Inscripción y admisión',
           '📜 Certificados','💰 Financiación y becas',
           '🎓 Requisitos de grado','🆘 Necesito ayuda urgente'
-        ]), 400);
+        ]), 500);
       }, 600);
       return;
     }
