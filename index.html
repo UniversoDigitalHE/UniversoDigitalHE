@@ -197,7 +197,7 @@ body{font-family:var(--font);background:var(--light);min-height:100vh;display:fl
 <div id="demo-panel">
   <div class="dlogo" id="logo-wrap"></div>
   <div class="dcard">
-    <div class="badge-free">✓ 100% gratuito · Sin IA · Funciona offline</div>
+    <div class="badge-free">✓ 100% gratuito · IA Gemini activa · Google Sheets conectado</div>
     <h2>UniBot — Asesor Virtual</h2>
     <p>Responde preguntas sobre Universo Digital usando una base de conocimiento integrada. No necesita internet ni API key para funcionar.</p>
     <div class="fgrid">
@@ -306,6 +306,7 @@ const LOGO = ''; // vacío — se usa emoji de fallback si no hay logo
 
 // ── ESTADO ────────────────────────────────────────────────────
 let SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwZHoxS9y4nRXFAPsdOpLher117ikIWts5tny83T6IUQXmuwSP72NL2AXih-mSixeKDCg/exec';
+let GEMINI_KEY = 'AIzaSyB5ZYg04hrE-vuTTWazWQhoWit1jVXOTsA';
 let isOpen = false, starRating = 0, totalMensajes = 0;
 let usuarioIdentificado = false;
 let usuarioNombre = '', usuarioCedula = '', usuarioCorreo = '';
@@ -512,7 +513,7 @@ function bienvenida() {
 }
 
 // ── ENVIAR MENSAJE ────────────────────────────────────────────
-function enviar(text) {
+async function enviar(text) {
   const input = document.getElementById('user-input');
   const msg = text || input.value.trim();
   if (!msg) return;
@@ -556,12 +557,115 @@ function enviar(text) {
 
   totalMensajes++;
 
-  // Simular "escribiendo..."
+  // Llamar a Gemini con fallback a palabras clave
   const tid = showTyping();
-  setTimeout(() => {
+  try {
+    const reply = await llamarGemini(msg);
+    removeTyping(tid);
+    const { tipo } = buscarRespuesta(msg);
+    tramiteDetectado = tipo;
+    const labelT = labelTipo(tipo);
+    if (tipo !== 'consulta_general' && !temasConsultados.includes(labelT)) {
+      temasConsultados.push(labelT);
+    }
+    if (tipo !== 'consulta_general') addTramiteTag(labelT);
+    addMsg('bot', reply);
+    if (detectarDesercion(msg)) {
+      requiereEscalamiento = true;
+      setTimeout(() => addAlertBadge(), 300);
+      const t = genTicket(); ticketNum = t;
+      setTimeout(() => addTicket(t, true), 500);
+    }
+    setTimeout(() => { addQR(getQR(tipo)); addBotonAsesor(); }, 400);
+  } catch(e) {
+    // Fallback a respuestas por palabras clave
     removeTyping(tid);
     responder(msg);
-  }, 600 + Math.random() * 400);
+  }
+}
+
+async function llamarGemini(msg) {
+  const MODELOS = [
+    'gemini-2.0-flash-lite',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro-latest'
+  ];
+
+  // Construir contexto de la conversación
+  const historial = [];
+  document.querySelectorAll('.mrow').forEach(row => {
+    const bubble = row.querySelector('.bubble');
+    if (!bubble) return;
+    const esBot = row.classList.contains('bot');
+    const texto = bubble.innerText || bubble.textContent;
+    if (texto && texto.length > 2) {
+      historial.push({
+        role: esBot ? 'model' : 'user',
+        parts: [{ text: texto }]
+      });
+    }
+  });
+  // Limitar historial a últimos 10 turnos
+  const histReciente = historial.slice(-10);
+
+  const SYSTEM = `Eres UniBot, el asesor virtual de Universo Digital (universidad colombiana). Eres masculino, cálido y directo. Hablas de tú. Máximo 200 palabras por respuesta. Siempre termina con un próximo paso claro.
+
+DATOS DEL ESTUDIANTE EN ESTA SESIÓN:
+- Nombre: ${usuarioNombre || 'No identificado'}
+- Cédula: ${usuarioCedula || 'No registrada'}
+- Correo: ${usuarioCorreo || 'No registrado'}
+
+BASE DE CONOCIMIENTO:
+CALENDARIO 2026 — Período I: atención desde 13 ene, matrícula ordinaria hasta 30 ene, extraordinaria hasta 6 feb, inducción 24-31 ene, clases desde 2 feb, cancelación con 90% devolución hasta 23 feb, finales 1-6 jun, grados 8 may, intersemestral 16 jun-15 jul.
+Período II: inscripciones 16 mar-17 jul, inducción 11-17 jul, matrícula ordinaria hasta 17 jul, extraordinaria hasta 24 jul, clases desde 21 jul, receso 5-10 oct, finales 17-23 nov, grados 11 dic.
+
+INSCRIPCIÓN PREGRADO 2026-1: inscripciones 4 sep 2025–30 ene 2026, costo $52.500 COP. Pasos: formulario en línea → correo con guía → entrevista → admisión → guía de matrícula (imprimir láser) → pagar → enviar docs a inscripciones@universodgital.edu.co.
+
+DOCUMENTOS PREGRADO: ID ambas caras, diploma bachiller, EPS/Sisbén/Fosyga, foto JPG fondo blanco, formato verificación firmado, Habeas Data solo menores firmado por acudiente.
+DOCUMENTOS POSGRADO: igual pero diploma de pregrado. DOCTORADO además: certificado inglés + carta disponibilidad + diploma maestría.
+
+PROGRAMAS PREGRADO: Medicina Veterinaria, Zootecnia, Ing. Agronómica, Ing. Alimentos, Ing. Civil, Ing. Eléctrica, Ing. Ambiental, Ing. Sistemas, Ing. Industrial, Admón Empresas, Contaduría, Economía, Negocios Internacionales, Admón Agronegocios, Trabajo Social, Filosofía y Letras, Ciencias Políticas, Optometría, Bacteriología, Arquitectura, Diseño de Espacios, Lic. Lengua Castellana, Lic. Ed. Religiosa, Lic. Filosofía.
+POSGRADOS: Especializaciones (Gerencia Empresas, Gerencia Proyectos, Pedagogía). Maestrías (Admón, Docencia, Filosofía). Doctorados (Educación y Sociedad, Agrociencias).
+
+CERTIFICADOS: matrícula→SIAF o registro@universodgital.edu.co (2-3 días); admisión→inscripciones@universodgital.edu.co (2-3 días); notas→SIAF o registro@universodgital.edu.co (3-5 días); horarios→SIAF; terminación materias→programa académico (5 días); egresado→egresados@universodgital.edu.co (3 días). Todos sin costo para estudiantes activos.
+
+GRADO PREGRADO: 100% créditos + paz y salvo (financiero, biblioteca, bienestar) + trabajo de grado aprobado + nivel B1 segunda lengua. Jóvenes a la E: + pasantía social. Ceremonias: 8 may y 11 dic 2026.
+GRADO POSGRADO: todos los módulos + sustentación + paz y salvo. DOCTORADO: + tesis pública + artículo Scopus/ISI.
+
+FINANCIACIÓN DIRECTA: Línea 50/50 (0% interés, codeudor); Línea 30/70 (1% M.V., codeudor). Aliadas: ICETEX, Fincomercio, Financiar, Sufi. Contacto: apoyofinanciero@universodgital.edu.co.
+BECAS: mérito académico 25%-75% matrícula (no asociada a Saber 11). Generación E / Jóvenes a la E: 100% matrícula.
+
+SEÑALES DE DESERCIÓN — si detectas estas palabras responde con empatía y sugiere hablar con un asesor: "retirarme", "cancelar semestre", "no puedo más", "no aguanto", "estoy muy mal", "deprimido", "no vale la pena", "no tengo para pagar".
+
+CONTACTOS: inscripciones@universodgital.edu.co | apoyofinanciero@universodgital.edu.co | registro@universodgital.edu.co | WhatsApp: (+57) 321 770 17 68`;
+
+  for (const modelo of MODELOS) {
+    try {
+      const contents = [
+        { role:'user', parts:[{ text: 'Instrucciones del sistema:\n' + SYSTEM + '\nResponde: entendido.' }] },
+        { role:'model', parts:[{ text: 'Entendido. Soy UniBot, listo para ayudar.' }] },
+        ...histReciente,
+        { role:'user', parts:[{ text: msg }] }
+      ];
+      const res = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/' + modelo + ':generateContent?key=' + GEMINI_KEY,
+        { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ contents, generationConfig:{ maxOutputTokens:600, temperature:0.7 } }) }
+      );
+      const data = await res.json();
+      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+        return data.candidates[0].content.parts[0].text;
+      }
+    } catch(e) { continue; }
+  }
+  throw new Error('Sin respuesta de Gemini');
+}
+
+function detectarDesercion(msg) {
+  const señales = ['retirar','cancelar semestre','no puedo más','no aguanto',
+    'estoy muy mal','deprimido','no vale la pena','no tengo para pagar','quiero irme'];
+  return señales.some(s => msg.toLowerCase().includes(s));
 }
 
 function responder(msg) {
