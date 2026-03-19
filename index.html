@@ -316,7 +316,8 @@ const FORM_ENTRIES = {
   temas:       'entry.782562642',
   tramite:     'entry.763942588',
   calificacion:'entry.1316849586',
-  comentario:  'entry.1397613949'
+  comentario:  'entry.1397613949',
+  radicado:    'entry.1676606265'
 };
 let GEMINI_KEY = 'AIzaSyB5ZYg04hrE-vuTTWazWQhoWit1jVXOTsA';
 let isOpen = false, starRating = 0, totalMensajes = 0;
@@ -776,15 +777,23 @@ Tu caso ha sido registrado con el número:`);
   asesorParams.set(FORM_ENTRIES.temas, temasConsultados.join(' | ') || 'Solicitud de asesor');
   asesorParams.set(FORM_ENTRIES.tramite, tramiteDetectado || 'Solicitud de asesor');
   asesorParams.set(FORM_ENTRIES.comentario, 'Estudiante solicitó hablar con un asesor desde el chat');
+  if (ticketNum) asesorParams.set(FORM_ENTRIES.radicado, ticketNum);
   const asesorUrl = FORM_BASE + '&' + asesorParams.toString();
   // Abrir formulario directamente como enlace
-  const linkAsesor = document.createElement('a');
-  linkAsesor.href = asesorUrl;
-  linkAsesor.target = '_blank';
-  linkAsesor.rel = 'noopener';
-  document.body.appendChild(linkAsesor);
-  linkAsesor.click();
-  document.body.removeChild(linkAsesor);
+  // Mostrar enlace en el chat para que el estudiante lo abra
+  const msgs = document.getElementById('messages');
+  const divAsesor = document.createElement('div');
+  divAsesor.style.cssText = 'margin:8px 0 8px 38px;animation:min .3s ease';
+  divAsesor.innerHTML = '<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:12px;padding:12px 14px;font-size:13px;color:#9A3412">'
+    + '<strong>Caso radicado: ' + ticketNum + '</strong><br><br>'
+    + 'Para completar tu solicitud de asesor, haz clic aquí:<br><br>'
+    + '<a href="' + asesorUrl + '" target="_blank" rel="noopener noreferrer" '
+    + 'style="display:inline-block;background:linear-gradient(135deg,#1B2E5E,#2EC4B6);color:white;'
+    + 'text-decoration:none;border-radius:9px;padding:9px 18px;font-size:13px;font-weight:600;margin-top:4px">'
+    + 'Registrar solicitud de asesor →</a>'
+    + '</div>';
+  msgs.appendChild(divAsesor);
+  msgs.scrollTop = msgs.scrollHeight;
 }
 
 function labelTipo(t) {
@@ -819,6 +828,7 @@ function construirFormUrl() {
   params.set(FORM_ENTRIES.tramite, tramite);
   if (cal) params.set(FORM_ENTRIES.calificacion, String(cal));
   params.set(FORM_ENTRIES.comentario, comentario);
+  if (ticketNum) params.set(FORM_ENTRIES.radicado, ticketNum);
   return FORM_BASE + '&' + params.toString();
 }
 
@@ -857,8 +867,9 @@ function enviarValoracion() {
   const msgs = document.getElementById('messages');
   const div = document.createElement('div');
   div.style.cssText = 'margin:8px 0 8px 38px;animation:min .3s ease';
+  const radicadoTxt = ticketNum ? '<br><span style="font-size:11.5px;opacity:.8">Radicado: <strong>' + ticketNum + '</strong></span>' : '';
   div.innerHTML = '<div style="background:#E1F5EE;border:1px solid #9FE1CB;border-radius:12px;padding:12px 14px;font-size:13px;color:#085041">'
-    + '<strong>¡Gracias ' + nombre + '!</strong> Tu valoración está lista.<br><br>'
+    + '<strong>¡Gracias ' + nombre + '!</strong> Tu valoración está lista.' + radicadoTxt + '<br><br>'
     + 'Haz clic aquí para abrirla en Google Forms y enviarla:<br><br>'
     + '<a href="' + url + '" target="_blank" rel="noopener noreferrer" '
     + 'style="display:inline-block;background:linear-gradient(135deg,#1B2E5E,#2EC4B6);color:white;'
