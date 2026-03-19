@@ -799,7 +799,7 @@ function setStar(v) {
   document.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('on', i < v));
 }
 
-async function construirFormUrl() {
+function construirFormUrl() {
   const nombre = document.getElementById('r-nombre').value.trim();
   let correo = document.getElementById('r-correo').value.trim();
   if (correo && !correo.includes('@')) correo = correo + '@univdigital.edu.co';
