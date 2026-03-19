@@ -610,7 +610,7 @@ async function enviar(text) {
   const mLowEnv = msg.toLowerCase().replace(/[^a-záéíóúüñ0-9 ]/g,'').trim();
 
   if (mLowEnv.includes('conocer oferta') || mLowEnv.includes('oferta académica') || mLowEnv.includes('oferta academica')) {
-    addMsg('bot', 'Puedes explorar toda nuestra oferta académica — pregrado, posgrado y educación continua — en este enlace:\n\n📚 ' + GITHUB_BASE + '/oferta.html\n\nEncontrarás información de duración, modalidad y valores de matrícula de cada programa.');
+    addMsg('bot', 'Puedes explorar toda nuestra oferta académica — pregrado, posgrado y educación continua aquí:\n\n<a href="' + GITHUB_BASE + '/oferta.html" target="_blank" rel="noopener" style="color:var(--accent);font-weight:500">📚 Ver catálogo de programas →</a>\n\nEncontrarás información de duración, modalidad y valores de matrícula.');
     if (!temasConsultados.includes('Oferta académica')) temasConsultados.push('Oferta académica');
     tramiteDetectado = 'inscripcion';
     setTimeout(() => addBotonAsesor(), 400);
@@ -647,7 +647,8 @@ async function enviar(text) {
     return;
   }
   if (mLowEnv.includes('financiacion') || mLowEnv.includes('financiación') || mLowEnv.includes('becas')) {
-    addMsg('bot', KB.financiacion);
+    const linkFin = GITHUB_BASE + '/financiacion.html';
+    addMsg('bot', KB.financiacion + '\n\n<a href="' + linkFin + '" target="_blank" rel="noopener" style="color:var(--accent);font-weight:500">💳 Iniciar solicitud de financiación →</a>');
     if (!temasConsultados.includes('💰 Financiación')) temasConsultados.push('💰 Financiación');
     tramiteDetectado = 'financiacion';
     setTimeout(() => addBotonAsesor(), 400);
