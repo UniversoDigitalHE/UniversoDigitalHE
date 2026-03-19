@@ -719,7 +719,7 @@ function detectarDesercion(msg) {
 
 function responder(msg) {
   // Menu especial: oferta academica
-  if (mLow === 'conocer oferta academica' || mLow === 'conocer oferta académica' || mLow === 'ver oferta') {
+  if (mLow.includes('conocer oferta') || mLow.includes('oferta academica') || mLow.includes('oferta académica') || mLow === 'ver oferta') {
     addMsg('bot', 'Puedes explorar toda nuestra oferta academica — pregrado, posgrado y educacion continua — aqui:\n\n📚 ' + GITHUB_BASE + '/oferta.html\n\nEncontraras informacion de duracion, modalidad y valores de matricula de cada programa.');
     tramiteDetectado = 'inscripcion';
     if (!temasConsultados.includes('Oferta académica')) temasConsultados.push('Oferta académica');
@@ -728,13 +728,13 @@ function responder(msg) {
     return;
   }
   // Menu especial: educacion continua desde boton
-  if (mLow === 'educacion continua' || mLow === 'educación continua') {
+  if (mLow.includes('educacion continua') || mLow.includes('educación continua') || mLow.includes('continua')) {
     responder('diplomado');
     return;
   }
   // Menú especial de certificados
   const mLow = msg.toLowerCase().replace(/[^a-záéíóúüñ0-9 ]/g,'').trim();
-  if (mLow === 'certificados' || mLow === 'solicitar un certificado' || mLow === 'solicitar certificado') {
+  if (mLow.includes('certificado') || mLow === 'solicitar un certificado') {
     addMsg('bot', '¿Qué tipo de certificado necesitas?');
     setTimeout(() => addQR([
       'Certificado de matrícula',
@@ -751,7 +751,7 @@ function responder(msg) {
   }
 
   // Menú especial de ayuda urgente
-  if (mLow === 'necesito ayuda urgente' || mLow === 'ayuda urgente') {
+  if (mLow.includes('ayuda urgente') || mLow.includes('necesito ayuda')) {
     responder('no puedo más necesito ayuda');
     return;
   }
