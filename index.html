@@ -606,6 +606,75 @@ async function enviar(text) {
 
   totalMensajes++;
 
+  // ── Detección de botones del menú (antes de Gemini) ──────
+  const mLowEnv = msg.toLowerCase().replace(/[^a-záéíóúüñ0-9 ]/g,'').trim();
+
+  if (mLowEnv.includes('conocer oferta') || mLowEnv.includes('oferta académica') || mLowEnv.includes('oferta academica')) {
+    addMsg('bot', 'Puedes explorar toda nuestra oferta académica — pregrado, posgrado y educación continua — en este enlace:\n\n📚 ' + GITHUB_BASE + '/oferta.html\n\nEncontrarás información de duración, modalidad y valores de matrícula de cada programa.');
+    if (!temasConsultados.includes('Oferta académica')) temasConsultados.push('Oferta académica');
+    tramiteDetectado = 'inscripcion';
+    setTimeout(() => addBotonAsesor(), 400);
+    return;
+  }
+  if (mLowEnv.includes('educación continua') || mLowEnv.includes('educacion continua')) {
+    addMsg('bot', KB.ed_continua);
+    if (!temasConsultados.includes('Educación continua')) temasConsultados.push('Educación continua');
+    tramiteDetectado = 'continua';
+    setTimeout(() => addBotonAsesor(), 400);
+    return;
+  }
+  if (mLowEnv.includes('certificado')) {
+    addMsg('bot', '¿Qué tipo de certificado necesitas?');
+    setTimeout(() => addQR(['Certificado de matrícula','Certificado de admisión','Certificado de notas','Certificado de horarios','Certificado de terminación de materias','Certificado de egresado']), 300);
+    tramiteDetectado = 'certificados';
+    if (!temasConsultados.includes('📜 Certificados')) temasConsultados.push('📜 Certificados');
+    return;
+  }
+  if (mLowEnv.includes('volver al men') || mLowEnv.includes('menu principal')) {
+    volverMenu(); return;
+  }
+  if (mLowEnv.includes('calificar esta sesion') || mLowEnv.includes('calificar esta sesión')) {
+    cerrarChat(); return;
+  }
+  if (mLowEnv.includes('ayuda urgente') || mLowEnv.includes('necesito ayuda')) {
+    responder('no puedo más necesito ayuda'); return;
+  }
+  if (mLowEnv.includes('proceso de admision') || mLowEnv.includes('proceso de admisión')) {
+    addMsg('bot', KB.inscripcion_pre);
+    if (!temasConsultados.includes('📋 Admisión')) temasConsultados.push('📋 Admisión');
+    tramiteDetectado = 'inscripcion';
+    setTimeout(() => addBotonAsesor(), 400);
+    return;
+  }
+  if (mLowEnv.includes('financiacion') || mLowEnv.includes('financiación') || mLowEnv.includes('becas')) {
+    addMsg('bot', KB.financiacion);
+    if (!temasConsultados.includes('💰 Financiación')) temasConsultados.push('💰 Financiación');
+    tramiteDetectado = 'financiacion';
+    setTimeout(() => addBotonAsesor(), 400);
+    return;
+  }
+  if (mLowEnv.includes('calendario')) {
+    addMsg('bot', KB.calendario_1 + '\n\n' + KB.calendario_2);
+    if (!temasConsultados.includes('📅 Calendario')) temasConsultados.push('📅 Calendario');
+    tramiteDetectado = 'calendario';
+    setTimeout(() => addBotonAsesor(), 400);
+    return;
+  }
+  if (mLowEnv.includes('grado') || mLowEnv.includes('requisitos de grado')) {
+    addMsg('bot', KB.grado_pre);
+    if (!temasConsultados.includes('🎓 Grado')) temasConsultados.push('🎓 Grado');
+    tramiteDetectado = 'grado';
+    setTimeout(() => addBotonAsesor(), 400);
+    return;
+  }
+  if (mLowEnv.includes('inscripcion') || mLowEnv.includes('inscripción') || mLowEnv.includes('reinscripcion')) {
+    addMsg('bot', KB.inscripcion_pre);
+    if (!temasConsultados.includes('📋 Inscripción')) temasConsultados.push('📋 Inscripción');
+    tramiteDetectado = 'inscripcion';
+    setTimeout(() => addBotonAsesor(), 400);
+    return;
+  }
+
   // Llamar a Gemini con fallback a palabras clave
   const tid = showTyping();
   try {
