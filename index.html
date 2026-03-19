@@ -288,7 +288,7 @@ body{font-family:var(--font);background:var(--light);min-height:100vh;display:fl
         </div>
         <label class="rlabel">Observaciones o sugerencias</label>
         <textarea class="rtextarea" id="r-com" placeholder="¿Qué funcionó bien? ¿Qué mejorarías?"></textarea>
-        <a id="rbtn" href="#" target="_blank" rel="noopener noreferrer" onclick="return prepararForms(this)" style="display:block;background:linear-gradient(135deg,#1B2E5E,#2EC4B6);color:white;text-decoration:none;border-radius:11px;padding:12px;font-family:var(--font);font-size:14px;font-weight:600;text-align:center;cursor:pointer">Ir al formulario de valoración →</a>
+        <button id="rbtn" onclick="enviarValoracion()">Ir al formulario de valoración →</button>
       </div>
       <div id="rsuccess">
         <div class="sicon">🎉</div>
@@ -842,22 +842,34 @@ function cerrarValoracion() {
   toggleChat();
 }
 
-function prepararForms(enlace) {
-  const nombre = document.getElementById('r-nombre').value.trim();
-  if (!nombre) { alert('Por favor ingresa tu nombre.'); return false; }
-  // Validar estrellas obligatorias
-  if (!starRating) { alert('Por favor selecciona una calificación (1 a 5 estrellas).'); return false; }
-  // Construir URL y asignarla al enlace
-  enlace.href = construirFormUrl();
-  enlace.textContent = '✓ Formulario abierto';
-  // Cerrar panel después de 1.5 segundos
-  setTimeout(cerrarValoracion, 1500);
-  return true; // permite que el navegador abra el href normalmente
-}
-
 function enviarValoracion() {
-  const btn = document.getElementById('rbtn');
-  prepararForms(btn);
+  const nombre = document.getElementById('r-nombre').value.trim();
+  if (!nombre) { alert('Por favor ingresa tu nombre.'); return; }
+  if (!starRating) { alert('Por favor selecciona una calificación de 1 a 5 estrellas.'); return; }
+
+  const url = construirFormUrl();
+
+  // Cerrar el panel de valoración
+  document.getElementById('rating-overlay').classList.remove('show');
+  limpiarTodo();
+
+  // Mostrar enlace directamente en el chat
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.style.cssText = 'margin:8px 0 8px 38px;animation:min .3s ease';
+  div.innerHTML = '<div style="background:#E1F5EE;border:1px solid #9FE1CB;border-radius:12px;padding:12px 14px;font-size:13px;color:#085041">'
+    + '<strong>¡Gracias ' + nombre + '!</strong> Tu valoración está lista.<br><br>'
+    + 'Haz clic aquí para abrirla en Google Forms y enviarla:<br><br>'
+    + '<a href="' + url + '" target="_blank" rel="noopener noreferrer" '
+    + 'style="display:inline-block;background:linear-gradient(135deg,#1B2E5E,#2EC4B6);color:white;'
+    + 'text-decoration:none;border-radius:9px;padding:9px 18px;font-size:13px;font-weight:600;margin-top:4px">'
+    + 'Abrir formulario de valoración →</a>'
+    + '</div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  // Reabrir el chat si estaba cerrado
+  if (!isOpen) toggleChat();
 }
 
 
