@@ -313,6 +313,7 @@ const LOGO = 'data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJ
 let SHEETS_URL = ''; // Ya no se usa Apps Script
 const FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSeJTJSFt8fxWp_FcDxsGxxvpdVWSBJm_HIquVe_H0KcrPrq_g/viewform?usp=pp_url';
 const FORM_ENTRIES = {
+  tipo_usuario:'entry.2140586926',
   nombre:      'entry.232858778',
   cedula:      'entry.1318002423',
   correo:      'entry.1777207936',
@@ -320,9 +321,10 @@ const FORM_ENTRIES = {
   semestre:    'entry.1137801687',
   temas:       'entry.782562642',
   tramite:     'entry.763942588',
+  radicado:    'entry.1676606265',
+  resolucion:  'entry.2013679797',
   calificacion:'entry.1316849586',
-  comentario:  'entry.1397613949',
-  radicado:    'entry.1676606265'
+  comentario:  'entry.1397613949'
 };
 let GEMINI_KEY = 'AIzaSyB5ZYg04hrE-vuTTWazWQhoWit1jVXOTsA';
 let isOpen = false, starRating = 0, totalMensajes = 0;
@@ -332,6 +334,7 @@ let esperandoCampo = ''; // 'tipo' | 'nombre' | 'cedula' | 'correo'
 let temasConsultados = [];
 let sessionStart = new Date(), tramiteDetectado = '', requiereEscalamiento = false;
 let ticketNum = '';
+let resolucionConsulta = ''; // 'Sí, completamente' | 'Parcialmente' | 'No se resolvió'
 const GITHUB_BASE = 'https://universodigitalhe.github.io/UniversoDigitalHE';
 
 // ── BASE DE CONOCIMIENTO ──────────────────────────────────────
@@ -582,6 +585,12 @@ async function enviar(text) {
         ? 'Por último, ingresa tu **correo personal**:'
         : 'Por último, ingresa tu **correo institucional** (sin @univdigital.edu.co):';
       setTimeout(() => { removeTyping(tid); addMsg('bot', msgC); }, 500);
+      return;
+    }
+    if (esperandoCampo === 'comentario_parcial') {
+      esperandoCampo = '';
+      addMsg('bot', 'Gracias por el detalle. Tu caso queda registrado y un asesor te contactará a la brevedad.');
+      activarAsesor();
       return;
     }
     if (esperandoCampo === 'correo') {
@@ -865,8 +874,9 @@ function addBotonAsesor() {
   const wrap = document.createElement('div');
   wrap.style.cssText = 'padding:6px 0 0 38px;animation:min .3s ease;display:flex;flex-wrap:wrap;gap:7px';
   const botones = [
-    {txt:'✓ Si, se resolvio', css:'background:#DCFCE7;border-color:#86EFAC;color:#166534;font-weight:500', fn:() => consultaResuelta(true)},
-    {txt:'✗ Necesito mas ayuda', css:'background:#FEF2F2;border-color:#FECACA;color:#991B1B;font-weight:500', fn:() => consultaResuelta(false)},
+    {txt:'✓ Si, se resolvio', css:'background:#DCFCE7;border-color:#86EFAC;color:#166534;font-weight:500', fn:() => consultaResuelta('Sí, completamente')},
+    {txt:'〜 Parcialmente', css:'background:#FEF3C7;border-color:#FDE68A;color:#92400E;font-weight:500', fn:() => consultaResuelta('Parcialmente')},
+    {txt:'✗ Necesito mas ayuda', css:'background:#FEF2F2;border-color:#FECACA;color:#991B1B;font-weight:500', fn:() => consultaResuelta('No se resolvió')},
     {txt:'☰ Volver al menu', css:'', fn:() => volverMenu()},
     {txt:'👤 Hablar con un asesor', css:'background:var(--accent2);border-color:var(--accent2);color:white;font-weight:500', fn:() => activarAsesor()}
   ];
@@ -879,18 +889,23 @@ function addBotonAsesor() {
   msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
 }
 
-function consultaResuelta(resuelta) {
+function consultaResuelta(opcion) {
   removeQR();
-  if (resuelta) {
-    const nom = usuarioNombre || (tipoUsuario==='aspirante'?'aspirante':'estudiante');
-    addMsg('bot', 'Que bueno **'+nom+'**. Me alegra haber podido ayudarte. Gracias por hacer uso de **UniBot**, el asesor virtual de Universo Digital. Recuerda que puedo ayudarte siempre que lo necesites. Que tengas un excelente dia!');
-    setTimeout(() => addQR(['☰ Volver al menu principal', '⭐ Calificar esta sesion']), 400);
+  resolucionConsulta = opcion;
+  const nom = usuarioNombre || (tipoUsuario==='aspirante' ? 'aspirante' : 'estudiante');
+  if (opcion === 'Sí, completamente') {
+    addMsg('bot', 'Qué bueno **'+nom+'**. Me alegra haber podido ayudarte. Gracias por hacer uso de **UniBot**, el asesor virtual de Universo Digital. ¡Que tengas un excelente día!');
+    setTimeout(() => addQR(['☰ Volver al menú principal', '⭐ Calificar esta sesión']), 400);
+  } else if (opcion === 'Parcialmente') {
+    addMsg('bot', 'Entiendo **'+nom+'**. Cuéntame brevemente qué parte de tu consulta no quedó resuelta y un asesor hará seguimiento.');
+    requiereEscalamiento = true;
+    esperandoCampo = 'comentario_parcial';
   } else {
-    addMsg('bot', 'Lamento que no haya podido resolver tu consulta. Te recomiendo hablar directamente con un asesor:\n\n📱 WhatsApp: **(+57) 321 770 17 68**\n📧 **Inscripciones@univdigital.edu.co**');
+    addMsg('bot', 'Lamento que no haya podido resolver tu consulta **'+nom+'**. Un asesor se comunicará contigo.\n\n📱 WhatsApp: **(+57) 321 770 17 68**\n📧 **Inscripciones@univdigital.edu.co**');
+    requiereEscalamiento = true;
     setTimeout(() => activarAsesor(), 800);
   }
 }
-
 function volverMenu() {
   removeQR();
   addMsg('bot', 'En que mas te puedo ayudar' + (usuarioNombre ? ' **'+usuarioNombre+'**' : '') + '?');
@@ -960,7 +975,11 @@ function construirFormUrl() {
   const tramite = tramiteDetectado || 'consulta_general';
   const cal = starRating || '';
   const comentario = document.getElementById('r-com').value.trim() || '';
+  const tipo = tipoUsuario === 'aspirante' ? 'Aspirante' : 'Estudiante activo';
+  const radicado = ticketNum || 'No aplica';
+  const resolucion = resolucionConsulta || 'No indicó';
   const params = new URLSearchParams();
+  params.set(FORM_ENTRIES.tipo_usuario, tipo);
   params.set(FORM_ENTRIES.nombre, nombre);
   params.set(FORM_ENTRIES.cedula, usuarioCedula || '');
   params.set(FORM_ENTRIES.correo, correo);
@@ -968,15 +987,10 @@ function construirFormUrl() {
   params.set(FORM_ENTRIES.semestre, semestre);
   params.set(FORM_ENTRIES.temas, temas);
   params.set(FORM_ENTRIES.tramite, tramite);
+  params.set(FORM_ENTRIES.radicado, radicado);
+  params.set(FORM_ENTRIES.resolucion, resolucion);
   if (cal) params.set(FORM_ENTRIES.calificacion, String(cal));
   params.set(FORM_ENTRIES.comentario, comentario);
-  // tipo de usuario como parte del comentario si no hay campo Forms para ello
-  // (se registra en el campo temas)
-  if (tipoUsuario) {
-    const temasConTipo = (temas.startsWith('Tipo:') ? '' : 'Tipo: ' + tipoUsuario + ' | ') + temas;
-    params.set(FORM_ENTRIES.temas, temasConTipo);
-  }
-  if (ticketNum) params.set(FORM_ENTRIES.radicado, ticketNum);
   return FORM_BASE + '&' + params.toString();
 }
 
@@ -990,6 +1004,7 @@ function limpiarTodo() {
   starRating = 0;
   document.querySelectorAll('.star').forEach(s => s.classList.remove('on'));
   temasConsultados = [];
+  resolucionConsulta = '';
 }
 
 function cerrarValoracion() {
@@ -1121,8 +1136,8 @@ function removeTyping(id) { const e=document.getElementById(id); if(e)e.remove()
 function clearChat() {
   if(!confirm('¿Iniciar nueva conversación?')) return;
   totalMensajes=0; tramiteDetectado=''; requiereEscalamiento=false;
-  ticketNum=''; sessionStart=new Date(); temasConsultados=[];
-  usuarioIdentificado=false; tipoUsuario=''; usuarioNombre=''; usuarioCedula=''; usuarioCorreo=''; esperandoCampo='tipo';
+  ticketNum=''; resolucionConsulta=''; sessionStart=new Date(); temasConsultados=[];
+  usuarioIdentificado=false; tipoUsuario=''; usuarioNombre=''; usuarioCedula=''; usuarioCorreo=''; esperandoCampo='tipo'; resolucionConsulta='';
   document.getElementById('messages').innerHTML='';
   setTimeout(bienvenida, 200);
 }
