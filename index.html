@@ -594,33 +594,6 @@ async function enviar(text) {
       setTimeout(() => { removeTyping(tid); addMsg('bot', msgC); }, 500);
       return;
     }
-    if (esperandoCampo === 'comentario_parcial') {
-      esperandoCampo = '';
-      addMsg('bot', 'Gracias por el detalle. Tu caso queda registrado y un asesor te contactará a la brevedad.');
-      pedirCalificacionYAbrir();
-      return;
-    }
-    if (esperandoCampo === 'programa_aspirante') {
-      // Guardar el programa de interés
-      document.getElementById('r-prog').value = msg;
-      tramiteDetectado = 'inscripcion';
-      if (!temasConsultados.includes('📋 Admisión')) temasConsultados.push('📋 Admisión');
-      esperandoCampo = '';
-      addMsg('bot', 'Anotado. ');
-      setTimeout(() => pedirCalificacionYAbrir(), 400);
-      return;
-    }
-    if (esperandoCampo === 'calificacion_previa') {
-      // Extraer número de la respuesta (ej: "⭐⭐⭐ 3" → 3)
-      const numMatch = msg.match(/\d/);
-      if (numMatch) starRating = parseInt(numMatch[0]);
-      resolucionConsulta = 'No se resolvió';
-      esperandoCampo = '';
-      // Semestre 0 para aspirantes
-      document.getElementById('r-sem').value = tipoUsuario === 'aspirante' ? '0' : '';
-      activarAsesor();
-      return;
-    }
     if (esperandoCampo === 'correo') {
       usuarioCorreo = msg;
       usuarioIdentificado = true;
@@ -639,6 +612,33 @@ async function enviar(text) {
       }, 600);
       return;
     }
+  }
+
+  // ── Flujos especiales post-identificación ─────────────────
+  if (esperandoCampo === 'comentario_parcial') {
+    esperandoCampo = '';
+    addMsg('bot', 'Gracias por el detalle. Tu caso queda registrado y un asesor te contactará a la brevedad.');
+    pedirCalificacionYAbrir();
+    return;
+  }
+  if (esperandoCampo === 'programa_aspirante') {
+    document.getElementById('r-prog').value = msg;
+    tramiteDetectado = 'inscripcion';
+    if (!temasConsultados.includes('📋 Admisión')) temasConsultados.push('📋 Admisión');
+    esperandoCampo = '';
+    addMsg('bot', 'Anotado. ¿Cómo calificarías tu experiencia con UniBot de 1 a 5?');
+    setTimeout(() => addQR(['⭐ 1','⭐⭐ 2','⭐⭐⭐ 3','⭐⭐⭐⭐ 4','⭐⭐⭐⭐⭐ 5']), 400);
+    esperandoCampo = 'calificacion_previa';
+    return;
+  }
+  if (esperandoCampo === 'calificacion_previa') {
+    const numMatch = msg.match(/\d/);
+    if (numMatch) starRating = parseInt(numMatch[0]);
+    resolucionConsulta = 'No se resolvió';
+    esperandoCampo = '';
+    document.getElementById('r-sem').value = tipoUsuario === 'aspirante' ? '0' : '';
+    activarAsesor();
+    return;
   }
 
   totalMensajes++;
