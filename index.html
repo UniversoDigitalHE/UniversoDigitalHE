@@ -390,7 +390,7 @@ const KB = {
 
   ed_continua: `**Educación continua y diplomados**\n\nUniverso Digital ofrece diplomados sin necesidad de título universitario previo.\n\n- Duración: entre 80 y 120 horas según programa\n- Modalidad: presencial o virtual\n- Certificado institucional al finalizar\n- Descuento del 20% para egresados y colaboradores\n\n**Areas disponibles:** Gestión Empresarial, Transformación Digital, Marketing Digital, Inteligencia Artificial Aplicada, Finanzas, Talento Humano, Derecho Laboral, Salud Ocupacional, Pedagogía, Medio Ambiente.\n\nValores desde **$1.100.000** hasta **$1.900.000** por diplomado.\n\n¿Te interesa algún área en particular?`,
 
-  no_entiendo: `No encontré información específica sobre eso en mi base de conocimiento.\n\nPuedo ayudarte con:\n- 📅 Calendario académico 2026\n- 📋 Inscripción y documentos\n- 📜 Solicitud de certificados\n- 💰 Financiación y becas\n- 🎓 Requisitos de grado\n- 📞 Contactos institucionales\n\n¿O prefieres hablar con un asesor? Escríbenos al WhatsApp: **(+57) 321 770 17 68**`,
+  no_entiendo: `Lo siento, no tengo información específica sobre eso en este momento. Voy a escalar tu caso a un asesor especializado que podrá ayudarte mejor.`
 
   desercion: `Gracias por contarme esto — lo que sientes es completamente válido y me alegra que lo hayas compartido.\n\nAntes de tomar una decisión, hay opciones de apoyo económico y académico que quizás no conoces todavía.\n\nYa notifiqué a un **asesor de permanencia** quien puede orientarte hoy mismo. ¿Prefieres que te contacte por WhatsApp o por llamada?\n\n📱 También puedes escribirnos directamente: **(+57) 321 770 17 68**`,
 
@@ -646,7 +646,22 @@ async function enviar(text) {
     cerrarChat(); return;
   }
   if (mLowEnv.includes('ayuda urgente') || mLowEnv.includes('necesito ayuda')) {
-    responder('no puedo más necesito ayuda'); return;
+    // Ayuda urgente: Gemini responde con empatía y luego escala
+    const tidU = showTyping();
+    try {
+      const promptUrgente = 'El estudiante/aspirante ' + (usuarioNombre||'') + ' ha indicado que necesita ayuda urgente. Responde con empatía, valida su situación y dile que vas a conectarlo de inmediato con un asesor humano. Máximo 3 líneas. No hagas preguntas.';
+      const replyU = await llamarGemini(promptUrgente);
+      removeTyping(tidU);
+      addMsg('bot', replyU);
+    } catch(e) {
+      removeTyping(tidU);
+      addMsg('bot', 'Entiendo que necesitas ayuda urgente **' + (usuarioNombre||'') + '**. Estoy conectándote con un asesor de inmediato.');
+    }
+    requiereEscalamiento = true;
+    if (!temasConsultados.includes('🆘 Ayuda urgente')) temasConsultados.push('🆘 Ayuda urgente');
+    tramiteDetectado = 'apoyo';
+    setTimeout(() => activarAsesor(), 1200);
+    return;
   }
   if (mLowEnv.includes('proceso de admision') || mLowEnv.includes('proceso de admisión')) {
     addMsg('bot', KB.inscripcion_pre);
@@ -697,7 +712,25 @@ async function enviar(text) {
       temasConsultados.push(labelT);
     }
     if (tipo !== 'consulta_general') addTramiteTag(labelT);
+    // Si Gemini indica que no sabe, escalar automáticamente
+    const frasesSinInfo = ['no tengo información', 'no cuento con', 'no dispongo', 'no puedo ayudarte con eso',
+      'fuera de mi alcance', 'no está en mi base', 'no tengo acceso a esa información'];
+    const replyLow = reply.toLowerCase();
+    const geminNoSabe = frasesSinInfo.some(f => replyLow.includes(f));
+
     addMsg('bot', reply);
+
+    if (geminNoSabe) {
+      requiereEscalamiento = true;
+      if (!temasConsultados.includes('❓ Consulta sin respuesta')) temasConsultados.push('❓ Consulta sin respuesta');
+      setTimeout(() => {
+        const t = genTicket(); ticketNum = t;
+        addEscBadge();
+        setTimeout(() => activarAsesor(), 600);
+      }, 800);
+      return;
+    }
+
     if (detectarDesercion(msg)) {
       requiereEscalamiento = true;
       setTimeout(() => addAlertBadge(), 300);
@@ -706,9 +739,43 @@ async function enviar(text) {
     }
     setTimeout(() => { addQR(getQR(tipo)); addBotonAsesor(); }, 400);
   } catch(e) {
-    // Fallback a respuestas por palabras clave
     removeTyping(tid);
-    responder(msg);
+    // Gemini falló — intentar con mensaje empático + escalar
+    try {
+      const modelos = ['gemini-2.0-flash-lite','gemini-2.0-flash','gemini-1.5-flash-latest'];
+      let replyEmpático = null;
+      for (const m of modelos) {
+        try {
+          const r = await fetch(
+            'https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent?key='+GEMINI_KEY,
+            { method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ contents:[{role:'user',parts:[{text:
+                'Eres UniBot de Universo Digital. El estudiante ' + (usuarioNombre||'') +
+                ' preguntó: "'+msg+'". No tienes información específica sobre eso. '+
+                'Responde con empatía en máximo 2 líneas, dile que su consulta será atendida por un asesor especializado. '+
+                'No hagas preguntas ni des información inventada.'
+              }]}], generationConfig:{maxOutputTokens:150, temperature:0.7}})}
+          );
+          const d = await r.json();
+          if (d.candidates?.[0]?.content) { replyEmpático = d.candidates[0].content.parts[0].text; break; }
+        } catch(_) {}
+      }
+      if (replyEmpático) {
+        addMsg('bot', replyEmpático);
+      } else {
+        addMsg('bot', 'Entiendo tu consulta **'+(usuarioNombre||'')+'**. No tengo información específica sobre eso, pero un asesor especializado te ayudará con este tema.');
+      }
+    } catch(_) {
+      addMsg('bot', 'Entiendo tu consulta **'+(usuarioNombre||'')+'**. No tengo información específica sobre eso, pero un asesor especializado te ayudará con este tema.');
+    }
+    // Escalar automáticamente
+    requiereEscalamiento = true;
+    if (!temasConsultados.includes('❓ Consulta sin respuesta')) temasConsultados.push('❓ Consulta sin respuesta');
+    setTimeout(() => {
+      const t = genTicket(); ticketNum = t;
+      addEscBadge();
+      setTimeout(() => activarAsesor(), 800);
+    }, 1000);
   }
 }
 
@@ -846,8 +913,21 @@ function responder(msg) {
 
   if (tipo !== 'consulta_general') addTramiteTag(labelTipo(tipo));
 
+  const usandoNoEntiendo = !KB[resp];
   const texto = KB[resp] || KB.no_entiendo;
   addMsg('bot', texto);
+
+  if (usandoNoEntiendo) {
+    // No hay respuesta en KB — escalar automáticamente
+    requiereEscalamiento = true;
+    if (!temasConsultados.includes('❓ Consulta sin respuesta')) temasConsultados.push('❓ Consulta sin respuesta');
+    setTimeout(() => {
+      const t = genTicket(); ticketNum = t;
+      addEscBadge();
+      setTimeout(() => activarAsesor(), 600);
+    }, 800);
+    return;
+  }
 
   if (urgente) {
     requiereEscalamiento = true;
